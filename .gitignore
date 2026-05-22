@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# TaskClock runtime/build artifacts
+apps/taskclock/taskclock_data.json
+apps/taskclock/taskclock_error.log
+apps/taskclock/build/
+apps/taskclock/dist/
+apps/taskclock/*.spec
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
