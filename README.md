@@ -63,6 +63,14 @@ Rules:
 3. Public releases use semantic/versioned tags, e.g. `taskclock-v1.3.2`.
 4. The visible app version should match the release tag.
 5. The private BlackForest Engineering repo remains the operational source-of-truth.
+6. Private releases/tags come first; public releases are a curated follow-up, not the primary source.
+7. Do not publish the same public release twice; the public release workflow blocks duplicate tags.
+
+## Release order for TaskClock Qt
+
+1. Create and push the release tag in the private BlackForest Engineering repo first.
+2. Verify the private tag exists locally with `scripts/taskclock-qt-release-guard.sh <tag>`.
+3. Publish the public release only after the private tag exists and no public release already exists.
 
 ## License
 
