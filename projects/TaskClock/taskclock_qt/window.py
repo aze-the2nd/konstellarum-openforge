@@ -442,9 +442,31 @@ class TaskClockWindow(QtWidgets.QMainWindow):
 
     def toggle_pin(self, enabled: bool) -> None:
         self.pin_toggle.setText("Anpinnen: An" if enabled else "Anpinnen: Aus")
-        self.setWindowFlag(QtCore.Qt.WindowType.WindowStaysOnTopHint, enabled)
-        self.show()
+        self._set_stays_on_top(enabled)
         self.status_label.setText("Fenster angepinnt" if enabled else "Fenster nicht mehr angepinnt")
+
+    def _set_stays_on_top(self, enabled: bool) -> None:
+        """Toggle always-on-top without recreating the QWidget when possible.
+
+        QWidget.setWindowFlag(...); show() recreates the native window on many
+        window managers, which causes the visible flash Alex noticed. QWindow's
+        native handle can update the flag in-place on supported platforms. The
+        QWidget fallback keeps the old behaviour only where the native handle is
+        not available.
+        """
+        handle = self.windowHandle()
+        if handle is not None:
+            handle.setFlag(QtCore.Qt.WindowType.WindowStaysOnTopHint, enabled)
+            return
+
+        geometry = self.geometry()
+        was_active = self.isActiveWindow()
+        self.setWindowFlag(QtCore.Qt.WindowType.WindowStaysOnTopHint, enabled)
+        self.setGeometry(geometry)
+        self.show()
+        if was_active:
+            self.raise_()
+            self.activateWindow()
 
     def refresh_ui(self, select_task_id: str | None = None, structure_changed: bool = False) -> None:
         active = self.store.active_task()

@@ -43,6 +43,7 @@ jobs:
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTHONPATH: projects/TaskClock
         run: pytest -q
 
   build:
@@ -138,10 +139,10 @@ jobs:
             Modern Qt-based desktop app for stamping project time by task.
 
             Highlights:
-            - Clear, high-contrast Qt desktop UI.
-            - Live workday total alongside the active task timer.
-            - Safer new-workday reset with double confirmation.
-            - Toggle-style window pinning and date/time-based CSV export names.
+            - More readable light Qt widget UI with live active-task and workday timers.
+            - Safer Workday reset flow plus standardized dated CSV export names.
+            - Pin toggle avoids the QWidget re-show path that caused a visible flash.
+            - App title and downloadable assets show the release version.
             - Linux release bundles a libEGL compatibility shim for minimal environments.
 
             Assets:

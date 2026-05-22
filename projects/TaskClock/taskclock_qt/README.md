@@ -13,7 +13,7 @@ It keeps the same core workflow as the lightweight Python version:
 
 ## Current version
 
-`TaskClock Qt v1.4.1`
+`TaskClock Qt v1.4.2`
 
 The window title includes the version so standalone builds can be identified easily.
 
