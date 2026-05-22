@@ -29,6 +29,21 @@ Source: [`apps/taskclock`](apps/taskclock)
 Latest release:
 https://github.com/aze-the2nd/blackforest-openforge/releases
 
+### TaskClock Qt
+
+The modern Qt-based edition of TaskClock.
+
+- Same task-stamping workflow as the original app
+- Modern dark widget UI
+- CSV export
+- Window pinning
+- Linux fallback for missing `libEGL.so.1`
+
+Source: [`apps/taskclock_qt`](apps/taskclock_qt)
+
+Latest release:
+https://github.com/aze-the2nd/blackforest-openforge/releases
+
 ## Repository strategy
 
 This repo should stay clean and marketable:
