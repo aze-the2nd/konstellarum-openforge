@@ -2,34 +2,23 @@
 
 ## Purpose
 
-`blackforest-openforge` is the public product shelf for selected BlackForest Engineering tools. It should look like a deliberate software atelier, not a dump of internal project files.
-
-## Brand positioning
-
-**BlackForest Engineering** should read as:
-
-- precise and technical
-- practical rather than hype-driven
-- privacy-conscious and operationally mature
-- small-tool focused: useful software with low friction
-
-The public repo should reinforce that by keeping copy short, screenshots/releases clean, and project scope focused.
+`blackforest-openforge` is the public mirror for selected BlackForest Engineering project directories. It should look like a deliberate public release shelf, not a dump of internal project files.
 
 ## Source-of-truth model
 
-- Private repo: canonical development, planning, raw notes, internal context.
-- Public repo: curated, sanitized release channel.
+- Private repo: canonical development, planning, raw notes, and internal context.
+- Public repo: curated mirror of the private project tree.
+- Sync direction is private → public only.
 - Public history does not need to mirror every internal commit.
-- Public releases should be deliberate milestones.
 
 ## Layout
 
 ```text
-apps/<app-name>/      Public app source and app-level README
-.github/workflows/    Release automation
-docs/                 Public-facing strategy/process notes
-README.md             Brand landing page
-LICENSE               Repo-wide license
+projects/<project-name>/   Public mirror of a private project directory
+.github/workflows/         Public CI/release automation
+docs/                      Brand, release, and repo-management notes
+README.md                  Public landing page
+LICENSE                    Repo-wide license
 ```
 
 ## Release policy
@@ -43,9 +32,9 @@ LICENSE               Repo-wide license
 
 Before pushing from private to public:
 
-1. Copy only required source/docs.
-2. Exclude caches, build folders, local data, private notes, secrets.
+1. Copy only the project directory content that belongs in the mirror.
+2. Exclude caches, build folders, local data, private notes, and secrets.
 3. Run syntax/smoke tests where possible.
-4. Confirm app version equals release version.
+4. Confirm the app version equals the release version.
 5. Commit with a public-facing message.
-6. Push tag to trigger release.
+6. Push the private tag first, then publish the public release.

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from apps.taskclock_qt.core import TaskClockStore
+from taskclock_qt.core import TaskClockStore
 
 
 class Clock:

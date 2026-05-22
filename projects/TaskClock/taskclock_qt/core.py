@@ -13,7 +13,7 @@ from uuid import uuid4
 Clock = Callable[[], datetime]
 
 APP_NAME = "TaskClock"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 APP_TITLE = f"TaskClock Qt v{APP_VERSION}"
 
 
@@ -52,6 +52,11 @@ def fmt_seconds(seconds: int) -> str:
     hours, rem = divmod(max(0, seconds), 3600)
     minutes, secs = divmod(rem, 60)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def default_export_filename(moment: datetime | None = None) -> str:
+    stamp = (moment or now_utc()).astimezone().strftime("%Y-%m-%d_%H%M")
+    return f"taskclock_{stamp}.csv"
 
 
 @dataclass
@@ -114,9 +119,15 @@ class Task:
 
 
 class TaskClockStore:
-    def __init__(self, tasks: Iterable[Task] | None = None, clock: Clock = now_utc) -> None:
+    def __init__(
+        self,
+        tasks: Iterable[Task] | None = None,
+        clock: Clock = now_utc,
+        workdays: Iterable[dict[str, Any]] | None = None,
+    ) -> None:
         self.tasks: list[Task] = list(tasks or [])
         self.clock = clock
+        self.workdays: list[dict[str, Any]] = list(workdays or [])
 
     def active_task(self) -> Task | None:
         return next((task for task in self.tasks if task.is_active), None)
@@ -158,7 +169,26 @@ class TaskClockStore:
         return task
 
     def to_dict(self) -> dict[str, Any]:
-        return {"tasks": [task.to_dict() for task in self.tasks]}
+        return {"tasks": [task.to_dict() for task in self.tasks], "workdays": self.workdays}
+
+    def grand_total_seconds(self) -> int:
+        return sum(task.current_seconds(self.clock) for task in self.tasks)
+
+    def start_new_workday(self) -> dict[str, Any]:
+        ended_at = self.clock().isoformat()
+        self.stop_active()
+        archive = {
+            "id": uuid4().hex,
+            "ended_at": ended_at,
+            "total_seconds": sum(task.total_seconds for task in self.tasks),
+            "tasks": [task.to_dict() for task in self.tasks],
+        }
+        self.workdays.append(archive)
+        for task in self.tasks:
+            task.total_seconds = 0
+            task.active_since = None
+            task.sessions.clear()
+        return archive
 
     def save(self, path: Path | None = None) -> None:
         target = path or data_file()
@@ -172,7 +202,7 @@ class TaskClockStore:
             return cls(clock=clock)
         data = json.loads(source.read_text(encoding="utf-8"))
         tasks = [Task.from_dict(item) for item in data.get("tasks", [])]
-        return cls(tasks=tasks, clock=clock)
+        return cls(tasks=tasks, clock=clock, workdays=list(data.get("workdays", [])))
 
     def session_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []

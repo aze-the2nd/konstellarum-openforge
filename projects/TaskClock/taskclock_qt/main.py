@@ -5,16 +5,16 @@ import traceback
 from pathlib import Path
 
 if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from apps.taskclock_qt.qt_bootstrap import ensure_qt_runtime
+from taskclock_qt.qt_bootstrap import ensure_qt_runtime
 
 ensure_qt_runtime()
 
 from PySide6 import QtWidgets  # noqa: E402
 
-from apps.taskclock_qt.core import APP_TITLE, log_file  # noqa: E402
-from apps.taskclock_qt.window import TaskClockWindow  # noqa: E402
+from taskclock_qt.core import APP_TITLE, log_file  # noqa: E402
+from taskclock_qt.window import TaskClockWindow  # noqa: E402
 
 
 def main() -> int:

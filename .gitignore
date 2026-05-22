@@ -5,14 +5,12 @@ __pycache__/
 venv/
 
 # TaskClock runtime/build artifacts
-apps/taskclock/taskclock_data.json
-apps/taskclock/taskclock_error.log
-apps/taskclock/build/
-apps/taskclock/dist/
-apps/taskclock/*.spec
-apps/taskclock_qt/build/
-apps/taskclock_qt/dist/
-apps/taskclock_qt/*.spec
+projects/TaskClock/taskclock_data.json
+projects/TaskClock/taskclock_error.log
+projects/TaskClock/build/
+projects/TaskClock/dist/
+projects/TaskClock/taskclock_qt/build/
+projects/TaskClock/taskclock_qt/dist/
 
 # OS/editor
 .DS_Store

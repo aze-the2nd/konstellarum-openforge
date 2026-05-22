@@ -19,9 +19,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          if curl -fsSL -o /dev/null \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}"; then
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             echo "::error::Public release already exists for ${TAG}; refusing to publish again."
             exit 1
           fi
@@ -80,13 +78,13 @@ jobs:
         run: python -m pip install PySide6 pyinstaller
 
       - name: Build TaskClock Qt
-        working-directory: apps/taskclock_qt
+        working-directory: projects/TaskClock
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
-            pyinstaller --onefile --windowed --name "$DIST_NAME" --add-binary "native/libEGL.so.1:apps/taskclock_qt/native" main.py
+            pyinstaller --onefile --windowed --name "$DIST_NAME" --add-binary "taskclock_qt/native/libEGL.so.1:taskclock_qt/native" taskclock_qt/main.py
           else
-            pyinstaller --onefile --windowed --name "$DIST_NAME" main.py
+            pyinstaller --onefile --windowed --name "$DIST_NAME" taskclock_qt/main.py
           fi
 
       - name: Prepare Linux asset
@@ -94,7 +92,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          cp "apps/taskclock_qt/dist/$DIST_NAME" "release-assets/$DIST_NAME"
+          cp "projects/TaskClock/dist/$DIST_NAME" "release-assets/$DIST_NAME"
           chmod +x "release-assets/$DIST_NAME"
           sha256sum "release-assets/$DIST_NAME" > "release-assets/$DIST_NAME.sha256"
 
@@ -103,7 +101,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release-assets | Out-Null
-          Copy-Item "apps/taskclock_qt/dist/$env:DIST_NAME.exe" "release-assets/$env:DIST_NAME.exe"
+          Copy-Item "projects/TaskClock/dist/$env:DIST_NAME.exe" "release-assets/$env:DIST_NAME.exe"
           $hash = (Get-FileHash "release-assets/$env:DIST_NAME.exe" -Algorithm SHA256).Hash.ToLower()
           "$hash  release-assets/$env:DIST_NAME.exe" | Out-File -Encoding ascii "release-assets/$env:DIST_NAME.exe.sha256"
 
@@ -140,9 +138,10 @@ jobs:
             Modern Qt-based desktop app for stamping project time by task.
 
             Highlights:
-            - Dark, modern Qt widget UI.
-            - Same task/session workflow as the Python version.
-            - App title shows the release version.
+            - Clear, high-contrast Qt desktop UI.
+            - Live workday total alongside the active task timer.
+            - Safer new-workday reset with double confirmation.
+            - Toggle-style window pinning and date/time-based CSV export names.
             - Linux release bundles a libEGL compatibility shim for minimal environments.
 
             Assets:

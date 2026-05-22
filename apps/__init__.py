@@ -1,1 +1,0 @@
-"""Public app namespace."""
