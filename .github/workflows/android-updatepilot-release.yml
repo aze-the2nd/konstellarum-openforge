@@ -107,17 +107,30 @@ jobs:
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_CODE="${{ steps.version.outputs.version_code }}"
+          BUILD_LOG="${GITHUB_WORKSPACE}/gradle-build.log"
+          set +e
           gradle --no-daemon --stacktrace --info :app:assembleRelease \
             -PversionName="$VERSION" \
             -PversionCode="$VERSION_CODE" \
             -PreleaseKeystorePassword="${KEYSTORE_PASSWORD}" \
             -PreleaseKeyAlias="${KEYSTORE_ALIAS}" \
-            -PreleaseKeyPassword="${KEY_PASSWORD}"
+            -PreleaseKeyPassword="${KEY_PASSWORD}" \
+            >"${BUILD_LOG}" 2>&1
+          GRADLE_EXIT=$?
+          set -e
+          if [[ ${GRADLE_EXIT} -ne 0 ]]; then
+            echo "::error title=Gradle build failed::assembleRelease failed; see log excerpt below"
+            tail -n 200 "${BUILD_LOG}" || true
+            grep -E '(^FAILURE:|^\* What went wrong:|^\* Exception is:|error|ERROR|failed|license|Unresolved|Could not)' "${BUILD_LOG}" | tail -n 20 | while IFS= read -r line; do
+              echo "::error ::${line}"
+            done || true
+            exit ${GRADLE_EXIT}
+          fi
           echo "APK outputs:"
           find app/build/outputs/apk -maxdepth 3 -type f | sort
           APK_PATH=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort | tail -n 1)
           if [[ -z "${APK_PATH}" ]]; then
-            echo "No APK found under app/build/outputs/apk/release" >&2
+            echo "::error title=APK missing::No APK found under app/build/outputs/apk/release"
             exit 1
           fi
           mkdir -p dist
