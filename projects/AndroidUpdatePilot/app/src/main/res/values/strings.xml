@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_available_title">Update verfügbar</string>
+    <string name="update_install_button">Update installieren</string>
+    <string name="update_retry_button">Erneut prüfen</string>
+    <string name="update_up_to_date">Die installierte Version ist aktuell.</string>
+    <string name="update_checking">Suche nach Updates …</string>
+</resources>

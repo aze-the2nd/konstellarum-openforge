@@ -1,11 +1,10 @@
 # BlackForest OpenForge
 
-Public mirror of selected BlackForest Engineering project directories.
+Public tools from **BlackForest Engineering** — small, focused software built for everyday productivity.
 
 ## Projects
 
 ### TaskClock
-
 A minimal desktop time-stamping app for project tasks.
 
 - Create tasks/todos
@@ -13,37 +12,59 @@ A minimal desktop time-stamping app for project tasks.
 - See a live timer
 - Export sessions as CSV
 - Pin the window on top
-- Stores data in the user app-data directory
+- Stores data in the user app-data directory, not next to the executable
 
 Source: [`projects/TaskClock`](projects/TaskClock)
 
-### TaskClock Qt
+Latest release:
+https://github.com/aze-the2nd/blackforest-openforge/releases
 
+### TaskClock Qt
 The modern Qt-based edition of TaskClock.
 
 - Same task-stamping workflow as the original app
-- Clear, high-contrast widget UI
-- Active-task timer plus live workday total
-- CSV export with date/time-based default names
-- Toggle-style window pinning
-- Safer new-workday reset with double confirmation
+- Modern dark widget UI
+- CSV export
+- Window pinning
 - Linux fallback for missing `libEGL.so.1`
 
-Source: [`projects/TaskClock/taskclock_qt`](projects/TaskClock/taskclock_qt)
+Source: [`projects/TaskClock`](projects/TaskClock)
+
+Latest release:
+https://github.com/aze-the2nd/blackforest-openforge/releases
+
+### AndroidUpdatePilot
+An Android app that checks GitHub releases on startup and offers a direct APK update flow.
+
+- GitHub Releases as update source
+- In-app update prompt on launch
+- APK download + installer handoff
+- App restarts after successful installation
+
+Source: [`projects/AndroidUpdatePilot`](projects/AndroidUpdatePilot)
+
+Latest release:
+https://github.com/aze-the2nd/blackforest-openforge/releases
 
 ## Repository strategy
 
-- Private repo: canonical development, internal planning, and source of truth.
-- Public repo: curated mirror of private project directories.
-- Public currently mirrors all files under `projects/TaskClock/` as a temporary bridge.
-- Sync direction is private → public only.
+This repo should stay clean and marketable:
 
-## Release policy
+```text
+projects/             Public apps and tools
+docs/                 Brand, release, and repo-management notes
+.github/workflows/    Public CI/release automation
+LICENSE               Repo-wide MIT license
+README.md             Public landing page
+```
 
-- Tag names are app-scoped, e.g. `taskclock-v1.3.2` or `taskclock-qt-v1.4.1`.
-- App title, release tag, and artifact names should use the same version.
-- Public releases are curated follow-ups to private-first releases.
-- Do not republish the same public release twice.
+Rules:
+
+1. Only publish curated, self-contained project snapshots.
+2. Keep private planning, client context, credentials, and internal operations out of this repo.
+3. Public releases use semantic/versioned tags, e.g. `android-update-pilot-v0.1.0`.
+4. The visible app version should match the release tag.
+5. The private BlackForest Engineering repo remains the operational source-of-truth.
 
 ## License
 

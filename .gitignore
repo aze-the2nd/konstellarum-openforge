@@ -4,6 +4,13 @@ __pycache__/
 .venv/
 venv/
 
+# AndroidUpdatePilot runtime/build artifacts
+projects/AndroidUpdatePilot/.signing/
+projects/AndroidUpdatePilot/build/
+projects/AndroidUpdatePilot/dist/
+projects/AndroidUpdatePilot/app/build/
+projects/AndroidUpdatePilot/app/.cxx/
+
 # TaskClock runtime/build artifacts
 projects/TaskClock/taskclock_data.json
 projects/TaskClock/taskclock_error.log
