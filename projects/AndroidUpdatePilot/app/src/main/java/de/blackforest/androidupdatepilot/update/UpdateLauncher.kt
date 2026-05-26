@@ -10,6 +10,12 @@ class UpdateLauncher(
     private val context: Context,
 ) {
     fun install(downloadUrl: String) {
+        val downloadManager = context.getSystemService(DownloadManager::class.java)
+            ?: run {
+                Toast.makeText(context, "DownloadManager ist nicht verfügbar", Toast.LENGTH_LONG).show()
+                return
+            }
+
         val request = DownloadManager.Request(Uri.parse(downloadUrl))
             .setTitle("AndroidUpdatePilot Update")
             .setDescription("Update wird heruntergeladen")
@@ -21,9 +27,7 @@ class UpdateLauncher(
                 APK_FILE_NAME,
             )
 
-        val downloadManager = context.getSystemService(DownloadManager::class.java)
         val downloadId = downloadManager.enqueue(request)
-
         Toast.makeText(context, "Update-Download gestartet (#$downloadId)", Toast.LENGTH_SHORT).show()
     }
 

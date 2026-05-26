@@ -4,6 +4,7 @@ import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Environment
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
@@ -13,7 +14,7 @@ class UpdateDownloadReceiver : BroadcastReceiver() {
         val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
         if (downloadId == -1L) return
 
-        val downloadManager = context.getSystemService(DownloadManager::class.java)
+        val downloadManager = context.getSystemService(DownloadManager::class.java) ?: return
         val query = DownloadManager.Query().setFilterById(downloadId)
         val cursor = downloadManager.query(query) ?: return
 
@@ -23,10 +24,13 @@ class UpdateDownloadReceiver : BroadcastReceiver() {
             if (statusIndex == -1 || it.getInt(statusIndex) != DownloadManager.STATUS_SUCCESSFUL) return
         }
 
-        val apkFile = File(
-            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
-            UpdateLauncher.APK_FILE_NAME,
-        )
+        val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: run {
+                Toast.makeText(context, "Download-Verzeichnis nicht verfügbar", Toast.LENGTH_LONG).show()
+                return
+            }
+
+        val apkFile = File(downloadsDir, UpdateLauncher.APK_FILE_NAME)
 
         if (!apkFile.exists()) {
             Toast.makeText(context, "Update-Datei nicht gefunden", Toast.LENGTH_LONG).show()
