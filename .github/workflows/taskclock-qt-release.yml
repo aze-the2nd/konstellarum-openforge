@@ -139,8 +139,8 @@ jobs:
             Modern Qt-based desktop app for stamping project time by task.
 
             Highlights:
-            - More readable light Qt widget UI with live active-task and workday timers.
-            - Safer Workday reset flow plus standardized dated CSV export names.
+            - Darker Qt theme with a cleaner monospace timer display.
+            - Simplified Workday reset flow without the extra typed confirmation step.
             - Pin toggle avoids the QWidget re-show path that caused a visible flash.
             - App title and downloadable assets show the release version.
             - Linux release bundles a libEGL compatibility shim for minimal environments.
