@@ -107,14 +107,21 @@ jobs:
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_CODE="${{ steps.version.outputs.version_code }}"
-          gradle --no-daemon --stacktrace --info assembleRelease \
+          gradle --no-daemon --stacktrace --info :app:assembleRelease \
             -PversionName="$VERSION" \
             -PversionCode="$VERSION_CODE" \
             -PreleaseKeystorePassword="${KEYSTORE_PASSWORD}" \
             -PreleaseKeyAlias="${KEYSTORE_ALIAS}" \
             -PreleaseKeyPassword="${KEY_PASSWORD}"
+          echo "APK outputs:"
+          find app/build/outputs/apk -maxdepth 3 -type f | sort
+          APK_PATH=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort | tail -n 1)
+          if [[ -z "${APK_PATH}" ]]; then
+            echo "No APK found under app/build/outputs/apk/release" >&2
+            exit 1
+          fi
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/AndroidUpdatePilot-v${VERSION}.apk"
+          cp "${APK_PATH}" "dist/AndroidUpdatePilot-v${VERSION}.apk"
           sha256sum "dist/AndroidUpdatePilot-v${VERSION}.apk" > "dist/AndroidUpdatePilot-v${VERSION}.apk.sha256"
 
       - name: Publish GitHub release
