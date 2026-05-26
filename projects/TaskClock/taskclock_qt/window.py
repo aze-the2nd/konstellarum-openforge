@@ -10,26 +10,83 @@ from .core import APP_TITLE, APP_VERSION, Task, TaskClockStore, default_export_f
 
 @dataclass(frozen=True)
 class Palette:
-    bg: str = "#f5f7fb"
-    surface: str = "#ffffff"
-    card: str = "#eaf0f8"
-    card_alt: str = "#dde7f4"
-    text: str = "#162033"
-    muted: str = "#52627a"
-    primary: str = "#1463ff"
-    primary_dark: str = "#0d49bd"
-    danger: str = "#dc2626"
-    border: str = "#c9d4e5"
-    active_bg: str = "#dbeafe"
-    active_fg: str = "#0f2a52"
+    bg: str
+    surface: str
+    card: str
+    card_alt: str
+    text: str
+    muted: str
+    primary: str
+    primary_dark: str
+    danger: str
+    border: str
+    active_bg: str
+    active_fg: str
+    selection_fg: str
+    button_on_primary: str
+    button_on_danger: str
+    toggle_bg: str
+    toggle_hover: str
+    toggle_fg: str
+    ui_font_family: str = "DejaVu Sans"
+    ui_font_stack: str = "'DejaVu Sans', 'Liberation Sans', 'Arial', sans-serif"
+    mono_font_stack: str = "'JetBrains Mono', 'DejaVu Sans Mono', 'Liberation Mono', monospace"
+
+
+DARK_PALETTE = Palette(
+    bg="#0b1220",
+    surface="#101827",
+    card="#172033",
+    card_alt="#1f2a40",
+    text="#e5eefc",
+    muted="#91a4c7",
+    primary="#4cc9f0",
+    primary_dark="#1d8fb8",
+    danger="#f87171",
+    border="#24334d",
+    active_bg="#11324d",
+    active_fg="#d6f4ff",
+    selection_fg="#ffffff",
+    button_on_primary="#06111f",
+    button_on_danger="#250a0a",
+    toggle_bg="#172033",
+    toggle_hover="#1f2a40",
+    toggle_fg="#e5eefc",
+)
+
+
+LIGHT_PALETTE = Palette(
+    bg="#f5f7fb",
+    surface="#ffffff",
+    card="#eaf0f8",
+    card_alt="#dde7f4",
+    text="#162033",
+    muted="#52627a",
+    primary="#1463ff",
+    primary_dark="#0d49bd",
+    danger="#dc2626",
+    border="#c9d4e5",
+    active_bg="#dbeafe",
+    active_fg="#0f2a52",
+    selection_fg="#ffffff",
+    button_on_primary="#ffffff",
+    button_on_danger="#ffffff",
+    toggle_bg="#eaf0f8",
+    toggle_hover="#dde7f4",
+    toggle_fg="#162033",
+)
 
 
 class TaskTableModel(QtCore.QAbstractTableModel):
     COLUMNS = ("", "Task", "Zeit")
 
-    def __init__(self, store: TaskClockStore) -> None:
+    def __init__(self, store: TaskClockStore, palette: Palette) -> None:
         super().__init__()
         self.store = store
+        self.palette = palette
+
+    def set_palette(self, palette: Palette) -> None:
+        self.palette = palette
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:  # noqa: N802
         return 0 if parent.isValid() else len(self.store.tasks)
@@ -86,20 +143,20 @@ class TaskTableModel(QtCore.QAbstractTableModel):
             return QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
 
         if role == QtCore.Qt.ItemDataRole.FontRole:
-            font = QtGui.QFont("Segoe UI", 11)
+            font = QtGui.QFont(self.palette.ui_font_family, 11)
             if column == 1 and task.is_active:
                 font.setBold(True)
             return font
 
         if role == QtCore.Qt.ItemDataRole.ForegroundRole:
             if task.is_active:
-                return QtGui.QBrush(QtGui.QColor("#0f2a52"))
+                return QtGui.QBrush(QtGui.QColor(self.palette.active_fg))
             if column == 0:
-                return QtGui.QBrush(QtGui.QColor("#52627a"))
-            return QtGui.QBrush(QtGui.QColor("#162033"))
+                return QtGui.QBrush(QtGui.QColor(self.palette.muted))
+            return QtGui.QBrush(QtGui.QColor(self.palette.text))
 
         if role == QtCore.Qt.ItemDataRole.BackgroundRole and task.is_active:
-            return QtGui.QBrush(QtGui.QColor("#dbeafe"))
+            return QtGui.QBrush(QtGui.QColor(self.palette.active_bg))
 
         return None
 
@@ -108,14 +165,16 @@ class TaskClockWindow(QtWidgets.QMainWindow):
     def __init__(self, store: TaskClockStore | None = None) -> None:
         super().__init__()
         self.store = store or TaskClockStore.load()
-        self.palette = Palette()
+        self.theme_mode = "dark"
+        self.palette = DARK_PALETTE
         self.setWindowTitle(APP_TITLE)
         self.resize(860, 560)
         self.setMinimumSize(760, 500)
 
-        self.model = TaskTableModel(self.store)
+        self.model = TaskTableModel(self.store, self.palette)
         self._build_ui()
         self._apply_theme()
+        self._sync_theme_toggle()
         self._wire_timer()
         self.refresh_ui()
 
@@ -142,6 +201,12 @@ class TaskClockWindow(QtWidgets.QMainWindow):
         self.pin_toggle.setCheckable(True)
         self.pin_toggle.toggled.connect(self.toggle_pin)
         header.addWidget(self.pin_toggle)
+
+        self.theme_toggle = QtWidgets.QToolButton()
+        self.theme_toggle.setObjectName("ThemeToggle")
+        self.theme_toggle.setAutoRaise(True)
+        self.theme_toggle.clicked.connect(self.toggle_theme)
+        header.addWidget(self.theme_toggle)
         outer.addLayout(header)
 
         self.hero_card = QtWidgets.QFrame()
@@ -236,8 +301,8 @@ class TaskClockWindow(QtWidgets.QMainWindow):
             QWidget {{
                 background: {self.palette.bg};
                 color: {self.palette.text};
-                font-family: 'Inter', 'Segoe UI', 'Arial';
-                font-size: 12pt;
+                font-family: {self.palette.ui_font_stack};
+                font-size: 11pt;
             }}
             QLabel#TitleLabel {{
                 font-size: 22pt;
@@ -247,19 +312,6 @@ class TaskClockWindow(QtWidgets.QMainWindow):
             QLabel#SubtitleLabel, QLabel#StatusLabel {{
                 color: {self.palette.muted};
                 font-size: 10pt;
-            }}
-            QPushButton#PinToggle {{
-                background: {self.palette.card};
-                color: {self.palette.text};
-                border: 1px solid {self.palette.border};
-                border-radius: 16px;
-                padding: 10px 18px;
-                font-weight: 800;
-            }}
-            QPushButton#PinToggle:checked {{
-                background: {self.palette.primary};
-                color: #ffffff;
-                border-color: {self.palette.primary_dark};
             }}
             QFrame#HeroCard, QFrame#TableCard {{
                 background: {self.palette.surface};
@@ -281,13 +333,29 @@ class TaskClockWindow(QtWidgets.QMainWindow):
                 color: {self.palette.primary};
                 font-size: 30pt;
                 font-weight: 800;
-                font-family: 'Cascadia Mono', 'Consolas', monospace;
+                font-family: {self.palette.mono_font_stack};
             }}
             QLabel#MainTimerLabel {{
                 color: {self.palette.text};
                 font-size: 34pt;
                 font-weight: 900;
-                font-family: 'Cascadia Mono', 'Consolas', monospace;
+                font-family: {self.palette.mono_font_stack};
+            }}
+            QToolButton#ThemeToggle {{
+                background: {self.palette.toggle_bg};
+                color: {self.palette.toggle_fg};
+                border: 1px solid {self.palette.border};
+                border-radius: 14px;
+                min-width: 34px;
+                min-height: 34px;
+                max-width: 34px;
+                max-height: 34px;
+                font-size: 14pt;
+                font-weight: 700;
+                padding: 0px;
+            }}
+            QToolButton#ThemeToggle:hover {{
+                background: {self.palette.toggle_hover};
             }}
             QPushButton {{
                 border: none;
@@ -295,9 +363,24 @@ class TaskClockWindow(QtWidgets.QMainWindow):
                 padding: 12px 18px;
                 font-weight: 700;
             }}
+            QPushButton#PinToggle {{
+                background: {self.palette.card};
+                color: {self.palette.text};
+                border: 1px solid {self.palette.border};
+                border-radius: 16px;
+                padding: 10px 18px;
+                font-weight: 700;
+            }}
+            QPushButton#PinToggle:hover {{
+                background: {self.palette.card_alt};
+            }}
+            QPushButton#PinToggle:checked {{
+                background: {self.palette.primary};
+                color: {self.palette.button_on_primary};
+            }}
             QPushButton#PrimaryButton {{
                 background: {self.palette.primary};
-                color: #ffffff;
+                color: {self.palette.button_on_primary};
             }}
             QPushButton#PrimaryButton:hover {{
                 background: {self.palette.primary_dark};
@@ -311,7 +394,7 @@ class TaskClockWindow(QtWidgets.QMainWindow):
             }}
             QPushButton#DangerButton {{
                 background: {self.palette.danger};
-                color: #ffffff;
+                color: {self.palette.button_on_danger};
             }}
             QPushButton#DangerButton:hover {{
                 background: #ef4444;
@@ -322,8 +405,8 @@ class TaskClockWindow(QtWidgets.QMainWindow):
                 border: none;
                 gridline-color: {self.palette.border};
                 selection-background-color: {self.palette.primary_dark};
-                selection-color: white;
-                font-size: 12pt;
+                selection-color: {self.palette.selection_fg};
+                font-size: 11pt;
             }}
             QHeaderView::section {{
                 background: {self.palette.card};
@@ -337,6 +420,19 @@ class TaskClockWindow(QtWidgets.QMainWindow):
             }}
             """
         )
+
+    def _sync_theme_toggle(self) -> None:
+        is_dark = self.theme_mode == "dark"
+        self.theme_toggle.setText("☀" if is_dark else "☾")
+        self.theme_toggle.setToolTip("Zum Lightmode wechseln" if is_dark else "Zum Darkmode wechseln")
+
+    def toggle_theme(self, _checked: bool = False) -> None:
+        self.theme_mode = "light" if self.theme_mode == "dark" else "dark"
+        self.palette = LIGHT_PALETTE if self.theme_mode == "light" else DARK_PALETTE
+        self.model.set_palette(self.palette)
+        self._apply_theme()
+        self._sync_theme_toggle()
+        self.model.refresh_rows()
 
     def _wire_timer(self) -> None:
         self.timer = QtCore.QTimer(self)
@@ -427,17 +523,9 @@ class TaskClockWindow(QtWidgets.QMainWindow):
             != QtWidgets.QMessageBox.StandardButton.Yes
         ):
             return
-        confirmation, ok = QtWidgets.QInputDialog.getText(
-            self,
-            "Neuer Workday bestätigen",
-            "Zum Starten exakt NEUER WORKDAY eingeben:",
-        )
-        if not ok or confirmation.strip() != "NEUER WORKDAY":
-            self.status_label.setText("Neuer Workday abgebrochen")
-            return
-        archive = self.store.start_new_workday()
+        self.store.start_new_workday()
         self.store.save()
-        self.status_label.setText(f"Neuer Workday gestartet. Archiviert: {fmt_seconds(int(archive['total_seconds']))}")
+        self.status_label.setText("Neuer Workday gestartet")
         self.refresh_ui(structure_changed=True)
 
     def toggle_pin(self, enabled: bool) -> None:
