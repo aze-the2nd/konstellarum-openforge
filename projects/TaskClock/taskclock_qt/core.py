@@ -13,7 +13,7 @@ from uuid import uuid4
 Clock = Callable[[], datetime]
 
 APP_NAME = "TaskClock"
-APP_VERSION = "1.4.4"
+APP_VERSION = "1.4.3"
 APP_TITLE = f"TaskClock Qt v{APP_VERSION}"
 
 

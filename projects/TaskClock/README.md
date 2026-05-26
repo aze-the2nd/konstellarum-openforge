@@ -2,7 +2,7 @@
 
 Minimales Python-Stand-alone-Tool zum Erfassen von Projektzeit per Task-Stempelung.
 
-Der Projektbaum enthält inzwischen auch den Qt-Subprojektzweig `taskclock_qt/`.
+Der Projektbaum enthält inzwischen auch die Subprojektzweige `taskclock_qt/` und `rustyTaskClock/`.
 
 ## Umfang jetzt
 
@@ -21,13 +21,24 @@ TaskClock/
 ├── ProjectDefinition.md   # Vorgabe
 ├── README.md              # diese Kurzbeschreibung
 ├── taskclock.py           # klassische Stand-alone-App
-└── taskclock_qt/          # Qt-Subprojekt
+├── taskclock_qt/          # Qt-Subprojekt
+│   ├── README.md
+│   ├── __main__.py
+│   ├── core.py
+│   ├── main.py
+│   ├── qt_bootstrap.py
+│   └── window.py
+└── rustyTaskClock/        # Rust-Nachfolgeprojekt
+    ├── Cargo.toml
     ├── README.md
-    ├── __main__.py
-    ├── core.py
-    ├── main.py
-    ├── qt_bootstrap.py
-    └── window.py
+    ├── REQUIREMENTS.md
+    ├── src/
+    │   ├── core.rs
+    │   ├── gui.rs
+    │   ├── lib.rs
+    │   └── main.rs
+    └── tests/
+        └── core.rs
 ```
 
 Alles Weitere wird erst ergänzt, wenn es wirklich gebraucht wird.
@@ -45,3 +56,4 @@ Die App erzeugt lokal `taskclock_data.json`; Exporte werden per Dateidialog gesp
 - Release-Tags folgen dem Muster `taskclock-v1.3.2`.
 - Vor dem Publish prüft `scripts/taskclock-release-guard.sh <tag>` auf ein gültiges Tag und blockiert doppelte Releases.
 - Der GitHub Actions Workflow erzeugt Assets und Release-Titel mit derselben Versionsnummer wie das Tag.
+- Für das Rust-Subprojekt werden beim Release Linux- und Windows-Artefakte erzeugt.

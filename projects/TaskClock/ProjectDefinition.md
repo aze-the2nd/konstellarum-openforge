@@ -11,4 +11,4 @@
 - es soll pinnbar sein (toggle)
 
 
-- Das Qt-Subprojekt lebt künftig unter `taskclock_qt/` und wird vom Projektbaum mitgeführt.
+- Die Subprojekte leben künftig unter `taskclock_qt/` und `rustyTaskClock/` und werden vom Projektbaum mitgeführt.

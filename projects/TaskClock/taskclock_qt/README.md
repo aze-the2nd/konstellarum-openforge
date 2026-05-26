@@ -13,7 +13,7 @@ It keeps the same core workflow as the lightweight Python version:
 
 ## Current version
 
-`TaskClock Qt v1.4.4`
+`TaskClock Qt v1.4.3`
 
 The window title includes the version so standalone builds can be identified easily.
 
@@ -25,7 +25,7 @@ Requirements:
 - PySide6
 
 ```bash
-python -m apps.taskclock_qt
+python -m taskclock_qt
 ```
 
 ## Notes
