@@ -348,97 +348,106 @@ impl App for TaskClockApp {
                     }
                 });
 
-            ui.add_space(12.0);
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.label("Neue Task:");
-                    let response = ui.add(
-                        egui::TextEdit::singleline(&mut self.new_task_name).desired_width(220.0),
-                    );
-                    if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
-                        self.add_task();
-                    }
-                });
-
-                ui.add_space(6.0);
-                ui.horizontal_wrapped(|ui| {
-                    if ui.button("+ Anlegen").clicked() {
-                        self.add_task();
-                    }
-                    if ui.button("▶ / ■ Stempeln").clicked() {
-                        self.stamp_selected();
-                    }
-                    if ui.button("Aktive stoppen").clicked() {
-                        self.stop_active();
-                    }
-                    if ui.button("CSV exportieren").clicked() {
-                        self.export_csv();
-                    }
-                    if ui.button("Neuer Workday").clicked() {
-                        self.start_new_workday();
-                    }
-                    if ui.button("Löschen").clicked() {
-                        self.delete_selected();
-                    }
-                });
-
-                ui.add_space(12.0);
-                egui::Grid::new("task_grid")
-                    .striped(true)
-                    .spacing([12.0, 8.0])
-                    .show(ui, |ui| {
-                        ui.strong("");
-                        ui.strong("Task");
-                        ui.strong("Zeit");
-                        ui.strong("Aktion");
-                        ui.end_row();
-
-                        for task in self.store.tasks().to_vec() {
-                            let is_selected = self.selected_task == Some(task.id);
-                            let is_active = task.is_active();
-                            let marker = if is_active { "●" } else { "○" };
-                            if ui.selectable_label(is_selected, marker).clicked() {
-                                self.select_task(task.id);
-                            }
-                            if self.editing_task == Some(task.id) {
-                                let response = ui.add(
-                                    egui::TextEdit::singleline(&mut self.rename_buffer)
-                                        .desired_width(if compact_timers { 140.0 } else { 220.0 }),
-                                );
-                                let enter_pressed =
-                                    ui.input(|input| input.key_pressed(egui::Key::Enter));
-                                if response.lost_focus() || enter_pressed {
-                                    self.rename_task_from_buffer(task.id);
-                                }
-                            } else if ui
-                                .selectable_label(is_selected, task.name.clone())
-                                .on_hover_text("Klicken zum Umbenennen")
-                                .clicked()
-                            {
-                                self.select_task(task.id);
-                                self.editing_task = Some(task.id);
-                                self.rename_buffer = task.name.clone();
-                            }
-                            ui.label(crate::core::fmt_seconds(
-                                self.store
-                                    .current_seconds_for(task.id)
-                                    .unwrap_or(task.total_seconds),
-                            ));
-                            let action_label = if is_active { "Stop" } else { "Start" };
-                            if ui.button(action_label).clicked() {
-                                self.select_task(task.id);
-                                self.stamp_selected();
-                            }
-                            ui.end_row();
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.add_space(12.0);
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label("Neue Task:");
+                        let response = ui.add(
+                            egui::TextEdit::singleline(&mut self.new_task_name)
+                                .desired_width(220.0),
+                        );
+                        if response.lost_focus()
+                            && ui.input(|input| input.key_pressed(egui::Key::Enter))
+                        {
+                            self.add_task();
                         }
                     });
 
-                ui.add_space(8.0);
-                ui.label(&self.status);
-                if !self.export_path.as_os_str().is_empty() {
-                    ui.label(format!("Letzter Export: {}", self.export_path.display()));
-                }
-            });
+                    ui.add_space(6.0);
+                    ui.horizontal_wrapped(|ui| {
+                        if ui.button("+ Anlegen").clicked() {
+                            self.add_task();
+                        }
+                        if ui.button("▶ / ■ Stempeln").clicked() {
+                            self.stamp_selected();
+                        }
+                        if ui.button("Aktive stoppen").clicked() {
+                            self.stop_active();
+                        }
+                        if ui.button("CSV exportieren").clicked() {
+                            self.export_csv();
+                        }
+                        if ui.button("Neuer Workday").clicked() {
+                            self.start_new_workday();
+                        }
+                        if ui.button("Löschen").clicked() {
+                            self.delete_selected();
+                        }
+                    });
+
+                    ui.add_space(12.0);
+                    egui::Grid::new("task_grid")
+                        .striped(true)
+                        .spacing([12.0, 8.0])
+                        .show(ui, |ui| {
+                            ui.strong("");
+                            ui.strong("Task");
+                            ui.strong("Zeit");
+                            ui.strong("Aktion");
+                            ui.end_row();
+
+                            for task in self.store.tasks().to_vec() {
+                                let is_selected = self.selected_task == Some(task.id);
+                                let is_active = task.is_active();
+                                let marker = if is_active { "●" } else { "○" };
+                                if ui.selectable_label(is_selected, marker).clicked() {
+                                    self.select_task(task.id);
+                                }
+                                if self.editing_task == Some(task.id) {
+                                    let response = ui.add(
+                                        egui::TextEdit::singleline(&mut self.rename_buffer)
+                                            .desired_width(if compact_timers {
+                                                140.0
+                                            } else {
+                                                220.0
+                                            }),
+                                    );
+                                    let enter_pressed =
+                                        ui.input(|input| input.key_pressed(egui::Key::Enter));
+                                    if response.lost_focus() || enter_pressed {
+                                        self.rename_task_from_buffer(task.id);
+                                    }
+                                } else if ui
+                                    .selectable_label(is_selected, task.name.clone())
+                                    .on_hover_text("Klicken zum Umbenennen")
+                                    .clicked()
+                                {
+                                    self.select_task(task.id);
+                                    self.editing_task = Some(task.id);
+                                    self.rename_buffer = task.name.clone();
+                                }
+                                ui.label(crate::core::fmt_seconds(
+                                    self.store
+                                        .current_seconds_for(task.id)
+                                        .unwrap_or(task.total_seconds),
+                                ));
+                                let action_label = if is_active { "Stop" } else { "Start" };
+                                if ui.button(action_label).clicked() {
+                                    self.select_task(task.id);
+                                    self.stamp_selected();
+                                }
+                                ui.end_row();
+                            }
+                        });
+
+                    ui.add_space(8.0);
+                    ui.label(&self.status);
+                    if !self.export_path.as_os_str().is_empty() {
+                        ui.label(format!("Letzter Export: {}", self.export_path.display()));
+                    }
+                });
         });
     }
 }
