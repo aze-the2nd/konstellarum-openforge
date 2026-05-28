@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use csv::Writer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -92,6 +92,20 @@ pub fn fmt_seconds(seconds: i64) -> String {
     let minutes = (seconds % 3600) / 60;
     let secs = seconds % 60;
     format!("{hours:02}:{minutes:02}:{secs:02}")
+}
+
+fn duration_breakdown(seconds: i64) -> (i64, i64, String) {
+    let seconds = seconds.max(0);
+    let hours = seconds / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let label = if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else if minutes > 0 {
+        format!("{minutes}m")
+    } else {
+        format!("{seconds}s")
+    };
+    (hours, minutes, label)
 }
 
 pub fn default_export_filename(moment: Option<DateTime<Utc>>) -> String {
@@ -262,15 +276,20 @@ impl WorkdayArchive {
         self.tasks
             .iter()
             .flat_map(|task| task.sessions.iter().cloned())
-            .map(|session| SessionRow {
-                workday_id: Some(self.id),
-                workday_ended_at: Some(self.ended_at),
-                task_id: session.task_id,
-                task_name: session.task_name,
-                start: session.start,
-                end: session.end,
-                seconds: session.seconds,
-                duration: fmt_seconds(session.seconds),
+            .map(|session| {
+                let (hours, minutes, duration) = duration_breakdown(session.seconds);
+                SessionRow {
+                    workday_id: Some(self.id),
+                    workday_ended_at: Some(self.ended_at),
+                    task_id: session.task_id,
+                    task_name: session.task_name,
+                    start: session.start,
+                    end: session.end,
+                    hours,
+                    minutes,
+                    seconds: session.seconds,
+                    duration,
+                }
             })
             .collect()
     }
@@ -284,8 +303,107 @@ pub struct SessionRow {
     pub task_name: String,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
+    pub hours: i64,
+    pub minutes: i64,
     pub seconds: i64,
     pub duration: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArchiveExportRange {
+    Month { year: i32, month: u32 },
+    Week { year: i32, week: u32 },
+    DateRange { start: NaiveDate, end: NaiveDate },
+}
+
+impl ArchiveExportRange {
+    fn normalized_bounds(self) -> (NaiveDate, NaiveDate) {
+        match self {
+            Self::Month { year, month } => {
+                let start = NaiveDate::from_ymd_opt(year, month, 1).unwrap_or_else(|| {
+                    NaiveDate::from_ymd_opt(year, 1, 1).expect("valid fallback date")
+                });
+                let (next_year, next_month) = if month == 12 {
+                    (year + 1, 1)
+                } else {
+                    (year, month + 1)
+                };
+                let next_month =
+                    NaiveDate::from_ymd_opt(next_year, next_month, 1).unwrap_or_else(|| {
+                        NaiveDate::from_ymd_opt(next_year, 12, 1).expect("valid fallback date")
+                    });
+                (start, next_month.pred_opt().unwrap_or(start))
+            }
+            Self::Week { year, week } => {
+                let date = NaiveDate::from_isoywd_opt(year, week, chrono::Weekday::Mon)
+                    .unwrap_or_else(|| {
+                        NaiveDate::from_ymd_opt(year, 1, 1).expect("valid fallback date")
+                    });
+                (date, date.succ_opt().unwrap_or(date))
+            }
+            Self::DateRange { start, end } => {
+                if start <= end {
+                    (start, end)
+                } else {
+                    (end, start)
+                }
+            }
+        }
+    }
+
+    pub fn includes_date(self, date: NaiveDate) -> bool {
+        match self {
+            Self::Month { year, month } => date.year() == year && date.month() == month,
+            Self::Week { year, week } => {
+                let iso = date.iso_week();
+                iso.year() == year && iso.week() == week
+            }
+            Self::DateRange { .. } => {
+                let (start, end) = self.normalized_bounds();
+                date >= start && date <= end
+            }
+        }
+    }
+
+    pub fn label(self) -> String {
+        match self {
+            Self::Month { year, month } => format!("Monat {year:04}-{month:02}"),
+            Self::Week { year, week } => format!("Woche {year:04}-W{week:02}"),
+            Self::DateRange { start, end } => {
+                let (start, end) = if start <= end {
+                    (start, end)
+                } else {
+                    (end, start)
+                };
+                format!("Zeitraum {start} bis {end}")
+            }
+        }
+    }
+
+    pub fn filename_segment(self) -> String {
+        match self {
+            Self::Month { year, month } => format!("{year:04}-{month:02}"),
+            Self::Week { year, week } => format!("{year:04}-w{week:02}"),
+            Self::DateRange { start, end } => {
+                let (start, end) = if start <= end {
+                    (start, end)
+                } else {
+                    (end, start)
+                };
+                format!("{start}_bis_{end}")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ArchiveExportSummary {
+    pub archives: usize,
+    pub rows: usize,
+}
+
+pub fn default_archive_export_filename(range: &ArchiveExportRange) -> String {
+    format!("taskclock_archive_{}.csv", range.filename_segment())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -415,6 +533,27 @@ impl TaskClockStore {
 
     pub fn workdays(&self) -> &[WorkdayArchive] {
         &self.workdays
+    }
+
+    pub fn archived_export_summary(&self, range: &ArchiveExportRange) -> ArchiveExportSummary {
+        let mut summary = ArchiveExportSummary::default();
+        for archive in &self.workdays {
+            if range.includes_date(archive.ended_at.date_naive()) {
+                summary.archives += 1;
+                summary.rows += archive.session_rows().len();
+            }
+        }
+        summary
+    }
+
+    pub fn archived_rows_in_range(&self, range: &ArchiveExportRange) -> Vec<SessionRow> {
+        let mut rows = Vec::new();
+        for archive in &self.workdays {
+            if range.includes_date(archive.ended_at.date_naive()) {
+                rows.extend(archive.session_rows());
+            }
+        }
+        rows
     }
 
     pub fn theme_mode(&self) -> ThemeMode {
@@ -556,19 +695,25 @@ impl TaskClockStore {
         let now = self.clock_now();
 
         for task in &self.tasks {
-            rows.extend(task.sessions.iter().cloned().map(|session| SessionRow {
-                workday_id: None,
-                workday_ended_at: None,
-                task_id: session.task_id,
-                task_name: session.task_name,
-                start: session.start,
-                end: session.end,
-                seconds: session.seconds,
-                duration: fmt_seconds(session.seconds),
+            rows.extend(task.sessions.iter().cloned().map(|session| {
+                let (hours, minutes, duration) = duration_breakdown(session.seconds);
+                SessionRow {
+                    workday_id: None,
+                    workday_ended_at: None,
+                    task_id: session.task_id,
+                    task_name: session.task_name,
+                    start: session.start,
+                    end: session.end,
+                    hours,
+                    minutes,
+                    seconds: session.seconds,
+                    duration,
+                }
             }));
 
             if let Some(start) = task.active_since {
                 let seconds = (now - start).num_seconds().max(0);
+                let (hours, minutes, duration) = duration_breakdown(seconds);
                 rows.push(SessionRow {
                     workday_id: None,
                     workday_ended_at: None,
@@ -576,8 +721,10 @@ impl TaskClockStore {
                     task_name: task.name.clone(),
                     start,
                     end: now,
+                    hours,
+                    minutes,
                     seconds,
-                    duration: fmt_seconds(seconds),
+                    duration,
                 });
             }
         }
@@ -610,6 +757,8 @@ impl TaskClockStore {
                 "task_name",
                 "start",
                 "end",
+                "hours",
+                "minutes",
                 "seconds",
                 "duration",
             ])
@@ -628,6 +777,66 @@ impl TaskClockStore {
             path: path.to_path_buf(),
             source,
         })
+    }
+
+    pub fn export_archived_csv<P: AsRef<Path>>(
+        &self,
+        path: P,
+        range: &ArchiveExportRange,
+    ) -> Result<ArchiveExportSummary, StoreError> {
+        let path = path.as_ref();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|source| StoreError::Write {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
+
+        let mut writer = Writer::from_path(path).map_err(|source| StoreError::Csv {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        writer
+            .write_record([
+                "workday_id",
+                "workday_ended_at",
+                "task_id",
+                "task_name",
+                "start",
+                "end",
+                "hours",
+                "minutes",
+                "seconds",
+                "duration",
+            ])
+            .map_err(|source| StoreError::Csv {
+                path: path.to_path_buf(),
+                source,
+            })?;
+
+        let mut summary = ArchiveExportSummary::default();
+        for archive in &self.workdays {
+            if !range.includes_date(archive.ended_at.date_naive()) {
+                continue;
+            }
+
+            summary.archives += 1;
+            let rows = archive.session_rows();
+            summary.rows += rows.len();
+            for row in rows {
+                writer.serialize(row).map_err(|source| StoreError::Csv {
+                    path: path.to_path_buf(),
+                    source,
+                })?;
+            }
+        }
+
+        writer.flush().map_err(|source| StoreError::Write {
+            path: path.to_path_buf(),
+            source,
+        })?;
+
+        Ok(summary)
     }
 }
 

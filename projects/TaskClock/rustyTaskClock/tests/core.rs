@@ -1,10 +1,11 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use rusty_taskclock::{
-    default_export_filename, fmt_seconds,
+    default_archive_export_filename, default_export_filename, fmt_seconds,
     gui::{
-        pin_toggle_label, theme_toggle_symbol, use_compact_timer_layout, COMPACT_MIN_INNER_SIZE,
+        archived_workdays_label, pin_toggle_label, theme_toggle_symbol, use_compact_timer_layout,
+        COMPACT_MIN_INNER_SIZE,
     },
-    TaskClockStore, ThemeMode,
+    ArchiveExportRange, ArchiveExportSummary, TaskClockStore, ThemeMode,
 };
 use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
@@ -45,6 +46,8 @@ fn gui_control_labels_match_polished_toggle_direction() {
     assert_eq!(theme_toggle_symbol(ThemeMode::Light), "🌙");
     assert_eq!(pin_toggle_label(false), "📌 Anpinnen");
     assert_eq!(pin_toggle_label(true), "📌 Angepinnt");
+    assert_eq!(archived_workdays_label(0), "Archivierte Workdays: 0");
+    assert_eq!(archived_workdays_label(2), "Archivierte Workdays: 2");
 }
 
 #[test]
@@ -153,8 +156,90 @@ fn export_csv_includes_current_and_archived_sessions() {
     store.export_csv(&path).unwrap();
 
     let csv = std::fs::read_to_string(&path).unwrap();
-    assert!(
-        csv.contains("workday_id,workday_ended_at,task_id,task_name,start,end,seconds,duration")
-    );
+    assert!(csv.contains(
+        "workday_id,workday_ended_at,task_id,task_name,start,end,hours,minutes,seconds,duration"
+    ));
+    assert!(csv.contains(",0,30,1800,30m"));
     assert!(csv.contains("Build"));
+}
+
+#[test]
+fn archived_export_manager_filters_by_month_week_and_date_range() {
+    let (now, clock) = manual_clock(utc(2026, 5, 26, 10, 0, 0));
+    let mut store = TaskClockStore::new_with_clock(clock);
+    let task = store.add_task("Build");
+
+    store.stamp(task).unwrap();
+    *now.lock().unwrap() = utc(2026, 5, 26, 11, 0, 0);
+    store.start_new_workday().unwrap();
+
+    *now.lock().unwrap() = utc(2026, 6, 2, 10, 0, 0);
+    store.stamp(task).unwrap();
+    *now.lock().unwrap() = utc(2026, 6, 2, 11, 0, 0);
+    store.start_new_workday().unwrap();
+
+    let may = ArchiveExportRange::Month {
+        year: 2026,
+        month: 5,
+    };
+    let june = ArchiveExportRange::Month {
+        year: 2026,
+        month: 6,
+    };
+    let first_week = store.workdays()[0].ended_at.date_naive().iso_week();
+    let week = ArchiveExportRange::Week {
+        year: first_week.year(),
+        week: first_week.week(),
+    };
+    let date_range = ArchiveExportRange::DateRange {
+        start: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
+        end: NaiveDate::from_ymd_opt(2026, 5, 31).unwrap(),
+    };
+
+    assert_eq!(
+        store.archived_export_summary(&may),
+        ArchiveExportSummary {
+            archives: 1,
+            rows: 1
+        }
+    );
+    assert_eq!(
+        store.archived_export_summary(&june),
+        ArchiveExportSummary {
+            archives: 1,
+            rows: 1
+        }
+    );
+    assert_eq!(
+        store.archived_export_summary(&week),
+        ArchiveExportSummary {
+            archives: 1,
+            rows: 1
+        }
+    );
+    assert_eq!(
+        store.archived_export_summary(&date_range),
+        ArchiveExportSummary {
+            archives: 1,
+            rows: 1
+        }
+    );
+
+    let dir = tempdir().unwrap();
+    let path = dir.path().join(default_archive_export_filename(&may));
+    let summary = store.export_archived_csv(&path, &may).unwrap();
+    assert_eq!(
+        summary,
+        ArchiveExportSummary {
+            archives: 1,
+            rows: 1
+        }
+    );
+    assert!(path.exists());
+
+    let csv = std::fs::read_to_string(&path).unwrap();
+    assert_eq!(csv.matches("Build").count(), 1);
+    assert!(csv.contains(
+        "workday_id,workday_ended_at,task_id,task_name,start,end,hours,minutes,seconds,duration"
+    ));
 }

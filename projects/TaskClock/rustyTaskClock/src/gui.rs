@@ -1,7 +1,8 @@
 use crate::core::{
-    default_export_filename, default_log_file, TaskClockStore, ThemeMode, APP_TITLE,
+    default_archive_export_filename, default_export_filename, default_log_file, ArchiveExportRange,
+    ArchiveExportSummary, TaskClockStore, ThemeMode, APP_TITLE,
 };
-use chrono::Utc;
+use chrono::{Datelike, NaiveDate, Utc};
 use eframe::{egui, App, CreationContext, Frame};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -11,6 +12,69 @@ pub const DEFAULT_INNER_SIZE: [f32; 2] = [820.0, 560.0];
 pub const COMPACT_MIN_INNER_SIZE: [f32; 2] = [360.0, 260.0];
 const COMPACT_WIDTH_THRESHOLD: f32 = 520.0;
 const COMPACT_HEIGHT_THRESHOLD: f32 = 420.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExportRangeMode {
+    Month,
+    Week,
+    DateRange,
+}
+
+#[derive(Debug, Clone)]
+struct ExportManagerState {
+    mode: ExportRangeMode,
+    month_year: i32,
+    month_month: u32,
+    week_year: i32,
+    week_week: u32,
+    date_start: String,
+    date_end: String,
+}
+
+impl ExportManagerState {
+    fn new(now: chrono::DateTime<Utc>) -> Self {
+        let today = now.date_naive();
+        let iso_week = today.iso_week();
+        Self {
+            mode: ExportRangeMode::Month,
+            month_year: today.year(),
+            month_month: today.month(),
+            week_year: iso_week.year(),
+            week_week: iso_week.week(),
+            date_start: today.to_string(),
+            date_end: today.to_string(),
+        }
+    }
+
+    fn selected_range(&self) -> Result<ArchiveExportRange, String> {
+        match self.mode {
+            ExportRangeMode::Month => Ok(ArchiveExportRange::Month {
+                year: self.month_year,
+                month: self.month_month,
+            }),
+            ExportRangeMode::Week => Ok(ArchiveExportRange::Week {
+                year: self.week_year,
+                week: self.week_week,
+            }),
+            ExportRangeMode::DateRange => {
+                let start = NaiveDate::parse_from_str(self.date_start.trim(), "%Y-%m-%d")
+                    .map_err(|_| String::from("Startdatum bitte als YYYY-MM-DD eingeben."))?;
+                let end = NaiveDate::parse_from_str(self.date_end.trim(), "%Y-%m-%d")
+                    .map_err(|_| String::from("Enddatum bitte als YYYY-MM-DD eingeben."))?;
+                Ok(ArchiveExportRange::DateRange { start, end })
+            }
+        }
+    }
+
+    fn preview(
+        &self,
+        store: &TaskClockStore,
+    ) -> Result<(ArchiveExportRange, ArchiveExportSummary), String> {
+        let range = self.selected_range()?;
+        let summary = store.archived_export_summary(&range);
+        Ok((range, summary))
+    }
+}
 
 pub fn use_compact_timer_layout(available_width: f32, available_height: f32) -> bool {
     available_width < COMPACT_WIDTH_THRESHOLD || available_height < COMPACT_HEIGHT_THRESHOLD
@@ -29,6 +93,10 @@ pub fn pin_toggle_label(pin_on_top: bool) -> &'static str {
     } else {
         "📌 Anpinnen"
     }
+}
+
+pub fn archived_workdays_label(count: usize) -> String {
+    format!("Archivierte Workdays: {count}")
 }
 
 pub fn run() {
@@ -59,6 +127,7 @@ pub struct TaskClockApp {
     status: String,
     pin_on_top: bool,
     export_path: PathBuf,
+    export_manager: ExportManagerState,
 }
 
 impl TaskClockApp {
@@ -71,6 +140,7 @@ impl TaskClockApp {
             ),
         };
         cc.egui_ctx.set_visuals(visuals_for(store.theme_mode()));
+        let export_manager = ExportManagerState::new(store.clock_now());
         let selected_task = store
             .active_task_id()
             .or_else(|| store.tasks().first().map(|task| task.id));
@@ -87,6 +157,7 @@ impl TaskClockApp {
             status,
             pin_on_top: false,
             export_path: PathBuf::new(),
+            export_manager,
         }
     }
 
@@ -238,6 +309,30 @@ impl TaskClockApp {
             Err(err) => self.status = format!("Export fehlgeschlagen: {err}"),
         }
     }
+
+    fn export_archived_range(&mut self) {
+        let range = match self.export_manager.selected_range() {
+            Ok(range) => range,
+            Err(err) => {
+                self.status = format!("Archiv-Export ungültig: {err}");
+                return;
+            }
+        };
+        let filename = default_archive_export_filename(&range);
+        let path = crate::core::app_data_dir().join("exports").join(filename);
+        match self.store.export_archived_csv(&path, &range) {
+            Ok(summary) => {
+                self.export_path = path.clone();
+                self.status = format!(
+                    "{} exportiert: {} Workdays, {} Zeilen.",
+                    range.label(),
+                    summary.archives,
+                    summary.rows
+                );
+            }
+            Err(err) => self.status = format!("Archiv-Export fehlgeschlagen: {err}"),
+        }
+    }
 }
 
 impl App for TaskClockApp {
@@ -305,32 +400,33 @@ impl App for TaskClockApp {
             egui::Frame::group(ui.style())
                 .inner_margin(egui::Margin::same(if compact_timers { 12 } else { 18 }))
                 .show(ui, |ui| {
+                    let title_gap = if compact_timers { 2.0 } else { 4.0 };
+                    let subtitle_gap = if compact_timers { 4.0 } else { 6.0 };
+                    let name_size = if compact_timers { 20.0 } else { 22.0 };
+                    let timer_size = if compact_timers { 30.0 } else { 36.0 };
+                    let placeholder_size = if compact_timers { 20.0 } else { 22.0 };
+
                     let active_block = |ui: &mut egui::Ui| {
                         ui.label(egui::RichText::new("AKTIVE TASK").small().strong());
-                        ui.label(
-                            egui::RichText::new(active_name)
-                                .size(if compact_timers { 20.0 } else { 24.0 })
-                                .strong(),
-                        );
+                        ui.add_space(title_gap);
+                        ui.label(egui::RichText::new(active_name).size(name_size).strong());
+                        ui.add_space(subtitle_gap);
                         ui.label(
                             egui::RichText::new(active_time.clone())
-                                .size(if compact_timers { 32.0 } else { 38.0 })
+                                .size(timer_size)
                                 .strong(),
                         );
                     };
                     let workday_block = |ui: &mut egui::Ui| {
                         ui.label(egui::RichText::new("WORKDAY GESAMT").small().strong());
+                        ui.add_space(title_gap);
+                        ui.label(egui::RichText::new(" ").size(placeholder_size));
+                        ui.add_space(subtitle_gap);
                         ui.label(
                             egui::RichText::new(workday_total.clone())
-                                .size(if compact_timers { 32.0 } else { 38.0 })
+                                .size(timer_size)
                                 .strong(),
                         );
-                        if !compact_timers {
-                            ui.label(format!(
-                                "Archivierte Workdays: {}",
-                                self.store.workdays().len()
-                            ));
-                        }
                     };
 
                     if compact_timers {
@@ -338,12 +434,30 @@ impl App for TaskClockApp {
                             active_block(ui);
                             ui.add_space(6.0);
                             workday_block(ui);
+                            ui.add_space(4.0);
+                            ui.horizontal_centered(|ui| {
+                                ui.label(
+                                    egui::RichText::new(archived_workdays_label(
+                                        self.store.workdays().len(),
+                                    ))
+                                    .small(),
+                                );
+                            });
                         });
                     } else {
                         ui.horizontal(|ui| {
                             ui.vertical(active_block);
                             ui.separator();
                             ui.vertical(workday_block);
+                        });
+                        ui.add_space(4.0);
+                        ui.horizontal_centered(|ui| {
+                            ui.label(
+                                egui::RichText::new(archived_workdays_label(
+                                    self.store.workdays().len(),
+                                ))
+                                .small(),
+                            );
                         });
                     }
                 });
@@ -376,7 +490,7 @@ impl App for TaskClockApp {
                         if ui.button("Aktive stoppen").clicked() {
                             self.stop_active();
                         }
-                        if ui.button("CSV exportieren").clicked() {
+                        if ui.button("Gesamt-CSV").clicked() {
                             self.export_csv();
                         }
                         if ui.button("Neuer Workday").clicked() {
@@ -386,6 +500,120 @@ impl App for TaskClockApp {
                             self.delete_selected();
                         }
                     });
+
+                    ui.add_space(8.0);
+                    egui::CollapsingHeader::new("Exportmanager")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label("Bereich:");
+                                ui.selectable_value(
+                                    &mut self.export_manager.mode,
+                                    ExportRangeMode::Month,
+                                    "Monat",
+                                );
+                                ui.selectable_value(
+                                    &mut self.export_manager.mode,
+                                    ExportRangeMode::Week,
+                                    "Woche",
+                                );
+                                ui.selectable_value(
+                                    &mut self.export_manager.mode,
+                                    ExportRangeMode::DateRange,
+                                    "Date-to-date",
+                                );
+                            });
+
+                            ui.add_space(4.0);
+                            match self.export_manager.mode {
+                                ExportRangeMode::Month => {
+                                    ui.horizontal_wrapped(|ui| {
+                                        ui.label("Jahr");
+                                        ui.add(
+                                            egui::DragValue::new(
+                                                &mut self.export_manager.month_year,
+                                            )
+                                            .speed(1),
+                                        );
+                                        ui.label("Monat");
+                                        ui.add(
+                                            egui::DragValue::new(
+                                                &mut self.export_manager.month_month,
+                                            )
+                                            .range(1..=12)
+                                            .speed(1),
+                                        );
+                                    });
+                                }
+                                ExportRangeMode::Week => {
+                                    ui.horizontal_wrapped(|ui| {
+                                        ui.label("ISO-Jahr");
+                                        ui.add(
+                                            egui::DragValue::new(
+                                                &mut self.export_manager.week_year,
+                                            )
+                                            .speed(1),
+                                        );
+                                        ui.label("ISO-Woche");
+                                        ui.add(
+                                            egui::DragValue::new(
+                                                &mut self.export_manager.week_week,
+                                            )
+                                            .range(1..=53)
+                                            .speed(1),
+                                        );
+                                    });
+                                }
+                                ExportRangeMode::DateRange => {
+                                    ui.horizontal_wrapped(|ui| {
+                                        ui.label("Von");
+                                        ui.add(
+                                            egui::TextEdit::singleline(
+                                                &mut self.export_manager.date_start,
+                                            )
+                                            .desired_width(110.0),
+                                        )
+                                        .on_hover_text("Format: YYYY-MM-DD");
+                                        ui.label("Bis");
+                                        ui.add(
+                                            egui::TextEdit::singleline(
+                                                &mut self.export_manager.date_end,
+                                            )
+                                            .desired_width(110.0),
+                                        )
+                                        .on_hover_text("Format: YYYY-MM-DD");
+                                    });
+                                }
+                            }
+
+                            ui.add_space(4.0);
+                            let preview = self.export_manager.preview(&self.store);
+                            ui.horizontal_wrapped(|ui| {
+                                if ui.button("Archiv-CSV exportieren").clicked() {
+                                    self.export_archived_range();
+                                }
+                                match &preview {
+                                    Ok((range, summary)) => {
+                                        ui.label(format!(
+                                            "{} • {} Workdays • {} Zeilen",
+                                            range.label(),
+                                            summary.archives,
+                                            summary.rows
+                                        ));
+                                    }
+                                    Err(err) => {
+                                        ui.colored_label(ui.visuals().error_fg_color, err);
+                                    }
+                                }
+                            });
+
+                            if let Ok((range, _)) = &preview {
+                                ui.label(format!(
+                                    "Dateiname: {}",
+                                    default_archive_export_filename(range)
+                                ));
+                            }
+                        });
 
                     ui.add_space(12.0);
                     egui::Grid::new("task_grid")
