@@ -349,40 +349,40 @@ impl App for TaskClockApp {
                 });
 
             ui.add_space(12.0);
-
-            ui.horizontal_wrapped(|ui| {
-                ui.label("Neue Task:");
-                let response = ui
-                    .add(egui::TextEdit::singleline(&mut self.new_task_name).desired_width(220.0));
-                if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
-                    self.add_task();
-                }
-            });
-
-            ui.add_space(6.0);
-            ui.horizontal_wrapped(|ui| {
-                if ui.button("+ Anlegen").clicked() {
-                    self.add_task();
-                }
-                if ui.button("▶ / ■ Stempeln").clicked() {
-                    self.stamp_selected();
-                }
-                if ui.button("Aktive stoppen").clicked() {
-                    self.stop_active();
-                }
-                if ui.button("CSV exportieren").clicked() {
-                    self.export_csv();
-                }
-                if ui.button("Neuer Workday").clicked() {
-                    self.start_new_workday();
-                }
-                if ui.button("Löschen").clicked() {
-                    self.delete_selected();
-                }
-            });
-
-            ui.add_space(12.0);
             egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Neue Task:");
+                    let response = ui.add(
+                        egui::TextEdit::singleline(&mut self.new_task_name).desired_width(220.0),
+                    );
+                    if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
+                        self.add_task();
+                    }
+                });
+
+                ui.add_space(6.0);
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button("+ Anlegen").clicked() {
+                        self.add_task();
+                    }
+                    if ui.button("▶ / ■ Stempeln").clicked() {
+                        self.stamp_selected();
+                    }
+                    if ui.button("Aktive stoppen").clicked() {
+                        self.stop_active();
+                    }
+                    if ui.button("CSV exportieren").clicked() {
+                        self.export_csv();
+                    }
+                    if ui.button("Neuer Workday").clicked() {
+                        self.start_new_workday();
+                    }
+                    if ui.button("Löschen").clicked() {
+                        self.delete_selected();
+                    }
+                });
+
+                ui.add_space(12.0);
                 egui::Grid::new("task_grid")
                     .striped(true)
                     .spacing([12.0, 8.0])
@@ -432,13 +432,13 @@ impl App for TaskClockApp {
                             ui.end_row();
                         }
                     });
-            });
 
-            ui.add_space(8.0);
-            ui.label(&self.status);
-            if !self.export_path.as_os_str().is_empty() {
-                ui.label(format!("Letzter Export: {}", self.export_path.display()));
-            }
+                ui.add_space(8.0);
+                ui.label(&self.status);
+                if !self.export_path.as_os_str().is_empty() {
+                    ui.label(format!("Letzter Export: {}", self.export_path.display()));
+                }
+            });
         });
     }
 }
