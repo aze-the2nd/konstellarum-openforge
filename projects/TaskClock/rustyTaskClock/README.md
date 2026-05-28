@@ -14,7 +14,7 @@ Rust-Nachfolgeprojekt für TaskClock.
 
 ## Status
 
-- Phase: release candidate 0.2.6
+- Phase: release candidate 0.2.7
 - Core logic, GUI, inline task renaming, compact timer layout, theme toggle, archive export manager, and persistence are implemented
 - Releases are published for Linux and Windows with matching versioned assets
 

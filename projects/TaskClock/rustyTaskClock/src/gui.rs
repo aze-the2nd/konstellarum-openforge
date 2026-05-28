@@ -445,10 +445,9 @@ impl App for TaskClockApp {
                             });
                         });
                     } else {
-                        ui.horizontal(|ui| {
-                            ui.vertical(active_block);
-                            ui.separator();
-                            ui.vertical(workday_block);
+                        ui.columns(2, |columns| {
+                            active_block(&mut columns[0]);
+                            workday_block(&mut columns[1]);
                         });
                         ui.add_space(4.0);
                         ui.horizontal_centered(|ui| {
