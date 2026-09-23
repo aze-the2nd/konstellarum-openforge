@@ -33,7 +33,7 @@ Source: [`projects/TaskClock`](projects/TaskClock)
 Latest release:
 https://github.com/aze-the2nd/blackforest-openforge/releases
 
-### AndroidUpdatePilot
+### Phronesis
 An Android app that checks GitHub releases on startup and offers a direct APK update flow.
 
 - GitHub Releases as update source
@@ -41,7 +41,7 @@ An Android app that checks GitHub releases on startup and offers a direct APK up
 - APK download + installer handoff
 - App restarts after successful installation
 
-Source: [`projects/AndroidUpdatePilot`](projects/AndroidUpdatePilot)
+Source: [`projects/Phronesis`](projects/Phronesis)
 
 Latest release:
 https://github.com/aze-the2nd/blackforest-openforge/releases
@@ -62,7 +62,7 @@ Rules:
 
 1. Only publish curated, self-contained project snapshots.
 2. Keep private planning, client context, credentials, and internal operations out of this repo.
-3. Public releases use semantic/versioned tags, e.g. `android-update-pilot-v0.1.0`.
+3. Public releases use semantic/versioned tags, e.g. `phronesis-v0.1.0`.
 4. The visible app version should match the release tag.
 5. The private BlackForest Engineering repo remains the operational source-of-truth.
 
