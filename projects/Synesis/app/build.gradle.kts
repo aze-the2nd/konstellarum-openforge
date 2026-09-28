@@ -71,6 +71,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":feature:calendar"))
+    implementation(project(":feature:cellar"))
     implementation(project(":feature:notes"))
     implementation(project(":feature:todos"))
 

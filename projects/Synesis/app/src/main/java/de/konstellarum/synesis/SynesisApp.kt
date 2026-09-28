@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import de.konstellarum.synesis.calendar.FileEventRepository
+import de.konstellarum.synesis.cellar.HttpTempRepository
 import de.konstellarum.synesis.notes.FileNoteRepository
 import de.konstellarum.synesis.todos.FileTodoRepository
 import de.konstellarum.synesis.ui.HomeScreen
@@ -33,6 +34,7 @@ fun SynesisApp() {
             noteRepository = FileNoteRepository(context),
             todoRepository = FileTodoRepository(context),
             eventRepository = FileEventRepository(context),
+            tempRepository = HttpTempRepository(context),
         )
     }
 

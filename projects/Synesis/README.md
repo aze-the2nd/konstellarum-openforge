@@ -2,11 +2,12 @@
 
 Private All-in-One-Plattform für Android: Basis-App mit Update-Mechanismus und Modul-System.
 
-## Module (Stand 0.1.0)
+## Module (Stand 0.2.0)
 
 - **Notizen** — anlegen, bearbeiten, löschen; optional mit einem Kalendertag verknüpft
 - **Aufgaben** — einfache Aufgabenliste mit Erledigt-Status
 - **Kalender** — Monatsansicht (Mo–So) mit Terminen und verknüpften Notizen
+- **Keller** — Temperaturüberwachung des Sensors `keller_temp` (IoT-Bridge im Tailnet)
 
 ## Update-Mechanismus
 
@@ -39,9 +40,10 @@ Synesis/
 ├── build.gradle.kts
 ├── gradle.properties
 ├── app/                 Shell (Navigation, Update, Modul-Registry)
-├── core/                Plattform-Kern (Modelle, Kalender-Logik, Speicher) + Unit-Tests
+├── core/                Plattform-Kern (Modelle, Kalender-/Sensor-Logik, Speicher) + Unit-Tests
 └── feature/
     ├── notes/           Modul Notizen
     ├── todos/           Modul Aufgaben
-    └── calendar/        Modul Kalender
+    ├── calendar/        Modul Kalender
+    └── cellar/          Modul Kellertemperatur
 ```

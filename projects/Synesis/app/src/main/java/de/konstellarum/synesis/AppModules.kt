@@ -2,11 +2,13 @@ package de.konstellarum.synesis
 
 import androidx.compose.runtime.Composable
 import de.konstellarum.synesis.calendar.CalendarModule
+import de.konstellarum.synesis.cellar.CellarModule
 import de.konstellarum.synesis.core.domain.EventRepository
 import de.konstellarum.synesis.core.domain.NoteRepository
 import de.konstellarum.synesis.core.domain.TodoRepository
 import de.konstellarum.synesis.core.platform.FeatureModule
 import de.konstellarum.synesis.core.platform.ModuleRegistry
+import de.konstellarum.synesis.core.sensor.TempRepository
 import de.konstellarum.synesis.notes.NotesModule
 import de.konstellarum.synesis.todos.TodosModule
 
@@ -18,6 +20,7 @@ class ModuleHost(
     val noteRepository: NoteRepository,
     val todoRepository: TodoRepository,
     val eventRepository: EventRepository,
+    val tempRepository: TempRepository,
 )
 
 /**
@@ -54,6 +57,14 @@ object AppModules {
                 moduleDescription = "Monatsansicht mit Terminen und verknüpften Notizen.",
             ),
             content = { host -> CalendarModule(host.eventRepository, host.noteRepository) },
+        ),
+        AppModule(
+            descriptor = moduleDescriptor(
+                moduleId = "cellar",
+                moduleTitle = "Keller",
+                moduleDescription = "Temperaturüberwachung des Kellertemperatur-Sensors.",
+            ),
+            content = { host -> CellarModule(host.tempRepository) },
         ),
     )
 

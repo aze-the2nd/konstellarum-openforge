@@ -12,10 +12,11 @@ auf dem Gerät.
 Synesis/
 ├── app/                 Shell: Modul-Registry, Navigation, Update-System (GitHub Releases)
 ├── core/                Plattformunabhängige Logik: Modul-Vertrag, Domänen-Modelle,
-│                        Kalender-Logik, JSON-Speicher — vollständig JVM-getestet
+│                        Kalender- und Sensor-Logik, JSON-Speicher — vollständig JVM-getestet
 ├── feature/notes/       Modul: Notizen (mit optionaler Kalender-Verknüpfung)
 ├── feature/todos/       Modul: Aufgaben
-└── feature/calendar/    Modul: Monatskalender (Termine + verknüpfte Notizen)
+├── feature/calendar/    Modul: Monatskalender (Termine + verknüpfte Notizen)
+└── feature/cellar/      Modul: Kellertemperatur (Sensor keller_temp über die IoT-Bridge)
 ```
 
 ## Modul-Vertrag
@@ -37,6 +38,23 @@ an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Notiz v
 - Aufgaben: anlegen, erledigen, löschen
 - Kalender: Monatsansicht (Montag bis Sonntag), Termine anlegen/löschen,
   verknüpfte Notizen erscheinen am jeweiligen Tag
+
+## Ausbaustufe 0.2.0 — Keller-Temperaturmodul
+
+- Modul `feature/cellar`: Temperaturüberwachung des Sensors `keller_temp`
+- Datenquelle: IoT-Bridge auf dem Tailnet-Host `aurora` (`GET http://100.101.80.34:5005/keller_temp?since=&limit=`)
+- Anzeige: aktueller Wert, Min/Ø/Max, Verlaufsdiagramm, Auto-Refresh (60 s)
+- Lokaler Cache (letzte 2000 Messwerte) — das Diagramm überlebt Neustarts
+- Netzwerk: Klartext-HTTP ist ausschließlich für die Tailnet-Adressen der Bridge erlaubt
+  (Network-Security-Config); alles andere bleibt HTTPS-only
+
+## Sensor-Vertrag (iot-db-bridge)
+
+```text
+GET /keller_temp?since=<unixsec>&limit=<n>  (Default 500, max 5000)
+→ {"ok":true,"count":N,"values":[{"t":<unixsec>,"temp_c":<float>},…]}  (neueste zuerst)
+Fehler: HTTP 400/500 mit {"ok":false,"error":"…"}
+```
 
 ## Update-Quelle
 
