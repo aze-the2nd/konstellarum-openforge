@@ -1,0 +1,7 @@
+.gradle/
+build/
+.kotlin/
+dist/
+local.properties
+.signing/
+*.p12

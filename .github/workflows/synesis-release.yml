@@ -100,6 +100,13 @@ jobs:
           unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
           echo "/tmp/gradle-dist/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
 
+      - name: Run unit tests
+        shell: bash
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+          gradle --no-daemon test
+
       - name: Build release APK
         shell: bash
         working-directory: ${{ env.APP_DIR }}

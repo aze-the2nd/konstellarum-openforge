@@ -18,3 +18,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Synesis"
 include(":app")
+include(":core")
+include(":feature:calendar")
+include(":feature:notes")
+include(":feature:todos")

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Synesis" parent="Theme.Material3.DayNight.NoActionBar" />
+    <!-- Pure Compose app: the platform theme only provides the window shell;
+         light/dark styling comes from MaterialTheme in SynesisApp. -->
+    <style name="Theme.Synesis" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

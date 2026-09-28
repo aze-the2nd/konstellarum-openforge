@@ -1,15 +1,23 @@
 package de.konstellarum.synesis
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import de.konstellarum.synesis.calendar.FileEventRepository
+import de.konstellarum.synesis.notes.FileNoteRepository
+import de.konstellarum.synesis.todos.FileTodoRepository
 import de.konstellarum.synesis.ui.HomeScreen
+import de.konstellarum.synesis.ui.ModuleScreen
 import de.konstellarum.synesis.update.GitHubReleaseUpdateRepository
 import de.konstellarum.synesis.update.UpdateCoordinator
 import de.konstellarum.synesis.update.UpdateLauncher
@@ -20,6 +28,16 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SynesisApp() {
     val context = LocalContext.current
+    val host = remember(context) {
+        ModuleHost(
+            noteRepository = FileNoteRepository(context),
+            todoRepository = FileTodoRepository(context),
+            eventRepository = FileEventRepository(context),
+        )
+    }
+
+    var selectedModuleId by rememberSaveable { mutableStateOf<String?>(null) }
+
     val launcher = remember(context) { UpdateLauncher(context) }
     val coordinator = remember {
         UpdateCoordinator(
@@ -41,12 +59,26 @@ fun SynesisApp() {
         }
     }
 
-    MaterialTheme {
-        HomeScreen(
-            appVersion = BuildConfig.VERSION_NAME,
-            state = state,
-            onStartUpdate = { launcher.install(it.downloadUrl) },
-            onRetry = { refreshToken += 1 },
-        )
+    MaterialTheme(
+        colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme(),
+    ) {
+        val activeModule = selectedModuleId?.let { AppModules.byId(it) }
+        if (activeModule == null) {
+            HomeScreen(
+                appVersion = BuildConfig.VERSION_NAME,
+                state = state,
+                modules = AppModules.registry.ordered,
+                onOpenModule = { selectedModuleId = it },
+                onStartUpdate = { launcher.install(it.downloadUrl) },
+                onRetry = { refreshToken += 1 },
+            )
+        } else {
+            ModuleScreen(
+                module = activeModule.descriptor,
+                host = host,
+                content = activeModule.content,
+                onBack = { selectedModuleId = null },
+            )
+        }
     }
 }
