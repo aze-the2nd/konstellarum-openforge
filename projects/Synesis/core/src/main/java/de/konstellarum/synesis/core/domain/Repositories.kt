@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface NoteRepository {
     val notes: StateFlow<List<Note>>
 
-    fun addNote(title: String, body: String = "", linkedDate: String? = null)
+    fun addNote(title: String, body: String = "")
     fun updateNote(note: Note)
     fun removeNote(id: String)
 }
@@ -17,8 +17,9 @@ interface NoteRepository {
 interface TodoRepository {
     val todos: StateFlow<List<TodoItem>>
 
-    fun addTodo(title: String)
+    fun addTodo(title: String, linkedDate: String? = null)
     fun setTodoDone(id: String, done: Boolean)
+    fun setTodoLinkedDate(id: String, linkedDate: String?)
     fun removeTodo(id: String)
 }
 
@@ -27,4 +28,11 @@ interface EventRepository {
 
     fun addEvent(title: String, date: String)
     fun removeEvent(id: String)
+}
+
+interface TranscriptRepository {
+    val transcripts: StateFlow<List<Transcript>>
+
+    fun addTranscript(text: String)
+    fun removeTranscript(id: String)
 }

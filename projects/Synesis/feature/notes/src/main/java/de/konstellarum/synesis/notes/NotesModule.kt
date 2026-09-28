@@ -16,10 +16,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,7 +24,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,11 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import de.konstellarum.synesis.core.calendar.IsoDates
 import de.konstellarum.synesis.core.domain.Note
 import de.konstellarum.synesis.core.domain.NoteRepository
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesModule(repository: NoteRepository) {
     val notes by repository.notes.collectAsState()
@@ -97,14 +90,12 @@ fun NotesModule(repository: NoteRepository) {
         NoteEditorDialog(
             existing = editing,
             onDismiss = { editorOpen = false },
-            onSave = { title, body, linkedDate ->
+            onSave = { title, body ->
                 val existing = editing
                 if (existing == null) {
-                    repository.addNote(title, body, linkedDate)
+                    repository.addNote(title, body)
                 } else {
-                    repository.updateNote(
-                        existing.copy(title = title.trim(), body = body, linkedDate = linkedDate),
-                    )
+                    repository.updateNote(existing.copy(title = title.trim(), body = body))
                 }
                 editorOpen = false
             },
@@ -142,12 +133,6 @@ private fun NoteCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                note.linkedDate?.let { linkedDate ->
-                    Text(
-                        text = "Kalender: $linkedDate",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Notiz löschen")
@@ -156,17 +141,14 @@ private fun NoteCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NoteEditorDialog(
     existing: Note?,
     onDismiss: () -> Unit,
-    onSave: (title: String, body: String, linkedDate: String?) -> Unit,
+    onSave: (title: String, body: String) -> Unit,
 ) {
     var title by remember(existing) { mutableStateOf(existing?.title ?: "") }
     var body by remember(existing) { mutableStateOf(existing?.body ?: "") }
-    var linkedDate by remember(existing) { mutableStateOf(existing?.linkedDate) }
-    var showDatePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -185,37 +167,12 @@ private fun NoteEditorDialog(
                     label = { Text("Inhalt") },
                     minLines = 3,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Checkbox(
-                        checked = linkedDate != null,
-                        onCheckedChange = { checked ->
-                            linkedDate = if (checked) {
-                                linkedDate ?: java.time.LocalDate.now().toString()
-                            } else {
-                                null
-                            }
-                        },
-                    )
-                    Column {
-                        Text("Im Kalender anzeigen")
-                        linkedDate?.let { date ->
-                            Text(
-                                text = date,
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.clickable { showDatePicker = true },
-                            )
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = title.isNotBlank(),
-                onClick = { onSave(title, body, linkedDate) },
+                onClick = { onSave(title, body) },
             ) {
                 Text("Speichern")
             }
@@ -224,31 +181,4 @@ private fun NoteEditorDialog(
             TextButton(onClick = onDismiss) { Text("Abbrechen") }
         },
     )
-
-    if (showDatePicker) {
-        val initialMillis = linkedDate
-            ?.let { IsoDates.parse(it) }
-            ?.let { IsoDates.toEpochMillis(it) }
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            linkedDate = IsoDates.fromEpochMillis(millis).toString()
-                        }
-                        showDatePicker = false
-                    },
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Abbrechen") }
-            },
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
 }

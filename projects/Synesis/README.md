@@ -2,12 +2,19 @@
 
 Private All-in-One-Plattform für Android: Basis-App mit Update-Mechanismus und Modul-System.
 
-## Module (Stand 0.2.0)
+## Module (Stand 0.3.0)
 
-- **Notizen** — anlegen, bearbeiten, löschen; optional mit einem Kalendertag verknüpft
-- **Aufgaben** — einfache Aufgabenliste mit Erledigt-Status
-- **Kalender** — Monatsansicht (Mo–So) mit Terminen und verknüpften Notizen
+- **Notizen** — anlegen, bearbeiten, löschen; bewusst ohne Kalender-Verknüpfung
+- **Aufgaben** — Aufgabenliste mit Erledigt-Status und optionaler Kalender-Verknüpfung
+- **Kalender** — Monatsansicht (Mo–So) mit Terminen und verknüpften Aufgaben
+- **Transkription** — Android-Spracherkennung starten, Texte lokal speichern, kopieren und per Thomas/Hermes-KI präzisieren lassen
 - **Keller** — Temperaturüberwachung des Sensors `keller_temp` (IoT-Bridge im Tailnet)
+- **Controller** — WLAN-Einstellungen des Sensors per Bluetooth ändern
+
+## Startseite
+
+- Update-Prüfung und Installation über GitHub Releases
+- Chat-Button öffnet direkt den Telegram-Chat mit dem Hermes-Agenten (`@tommy_watson_bot`)
 
 ## Update-Mechanismus
 
@@ -39,11 +46,13 @@ Synesis/
 ├── settings.gradle.kts
 ├── build.gradle.kts
 ├── gradle.properties
-├── app/                 Shell (Navigation, Update, Modul-Registry)
-├── core/                Plattform-Kern (Modelle, Kalender-/Sensor-Logik, Speicher) + Unit-Tests
+├── app/                 Shell (Navigation, Chat-Button, Update, Modul-Registry)
+├── core/                Plattform-Kern (Modelle, Kalender-/Sensor-/Chat-/Transkript-/KI-Auftragslogik, Speicher) + Unit-Tests
 └── feature/
     ├── notes/           Modul Notizen
     ├── todos/           Modul Aufgaben
     ├── calendar/        Modul Kalender
-    └── cellar/          Modul Kellertemperatur
+    ├── transcribe/      Modul Transkription
+    ├── cellar/          Modul Kellertemperatur
+    └── controller/      Modul Sensor-Controller
 ```

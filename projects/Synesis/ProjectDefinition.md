@@ -10,13 +10,17 @@ auf dem Gerät.
 
 ```text
 Synesis/
-├── app/                 Shell: Modul-Registry, Navigation, Update-System (GitHub Releases)
+├── app/                 Shell: Modul-Registry, Navigation, Chat-Button, Update-System
+│                        (GitHub Releases)
 ├── core/                Plattformunabhängige Logik: Modul-Vertrag, Domänen-Modelle,
-│                        Kalender- und Sensor-Logik, JSON-Speicher — vollständig JVM-getestet
-├── feature/notes/       Modul: Notizen (mit optionaler Kalender-Verknüpfung)
-├── feature/todos/       Modul: Aufgaben
-├── feature/calendar/    Modul: Monatskalender (Termine + verknüpfte Notizen)
-└── feature/cellar/      Modul: Kellertemperatur (Sensor keller_temp über die IoT-Bridge)
+│                        Kalender-, Sensor-, Chat- und Transkript-Logik, JSON-Speicher —
+│                        vollständig JVM-getestet
+├── feature/notes/       Modul: Notizen (ohne Kalender-Verknüpfung)
+├── feature/todos/       Modul: Aufgaben (optional mit Kalender-Verknüpfung)
+├── feature/calendar/    Modul: Monatskalender (Termine + verknüpfte Aufgaben)
+├── feature/transcribe/  Modul: Transkription über Android-Spracherkennung
+├── feature/cellar/      Modul: Kellertemperatur (Sensor keller_temp über die IoT-Bridge)
+└── feature/controller/  Modul: Sensor-WLAN-Provisioning über Bluetooth
 ```
 
 ## Modul-Vertrag
@@ -29,15 +33,14 @@ Ein Modul besteht aus
 Neue Module werden als eigenes Gradle-Modul angelegt und in `AppModules` registriert. Persistenz
 läuft über `FileBackedListStore` (JSON-Dateien im privaten App-Verzeichnis, `core`-getestet).
 Der Shell gehören Navigation, Update-System und die Repository-Instanzen (eine Instanz je Datentyp,
-an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Notiz verknüpft wird).
+an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Aufgabe verknüpft wird).
 
 ## MVP 0.1.0
 
 - Shell mit Modul-Navigation und Update-Check beim Start
-- Notizen: anlegen, bearbeiten, löschen; optionale Verknüpfung mit einem Kalendertag
+- Notizen: anlegen, bearbeiten, löschen
 - Aufgaben: anlegen, erledigen, löschen
-- Kalender: Monatsansicht (Montag bis Sonntag), Termine anlegen/löschen,
-  verknüpfte Notizen erscheinen am jeweiligen Tag
+- Kalender: Monatsansicht (Montag bis Sonntag), Termine anlegen/löschen
 
 ## Ausbaustufe 0.2.0 — Keller-Temperaturmodul
 
@@ -47,6 +50,19 @@ an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Notiz v
 - Lokaler Cache (letzte 2000 Messwerte) — das Diagramm überlebt Neustarts
 - Netzwerk: Klartext-HTTP ist ausschließlich für die Tailnet-Adressen der Bridge erlaubt
   (Network-Security-Config); alles andere bleibt HTTPS-only
+
+## Ausbaustufe 0.3.0 — Aufgaben-Kalender, Transkription, Chat, Logo
+
+- Kalender-Verknüpfung gehört zu Aufgaben (`TodoItem.linkedDate`), nicht zu Notizen
+- Kalender zeigt Termine und verknüpfte Aufgaben; Notizen bleiben reine Notizen
+- Modul `feature/transcribe`: Android-Spracherkennung starten, beste erkannte Kandidaten normalisieren,
+  lokale Transkript-Historie speichern, Transkripte kopieren, löschen oder als KI-Präzisierungsauftrag
+  für Thomas/Hermes vorbereiten
+- Startseiten-Button `Chat mit Thomas öffnen`: öffnet `tg://resolve?domain=tommy_watson_bot` mit
+  HTTPS-Fallback auf `https://t.me/tommy_watson_bot`
+- Neues adaptives App-Logo: dunkle Basis, Horizontbogen, zentrale Achse und vernetzte Knoten
+- App-Backup ist deaktiviert; lokale JSON-Dateien inklusive `.tmp`- und `.corrupt`-Varianten sind zusätzlich aus
+  Backup-/Transfer-Regeln ausgeschlossen (Notizen, Aufgaben, Termine, Transkripte und Keller-Cache)
 
 ## Sensor-Vertrag (iot-db-bridge)
 
@@ -69,10 +85,15 @@ Fehler: HTTP 400/500 mit {"ok":false,"error":"…"}
 - Benachrichtigungen, Widgets, Kalender-Provider-Integration
 - Import/Export von Workspace-Bundles (eigene Ausbaustufe)
 
-## Bekannte Grenzen (0.1.0)
+## Bekannte Grenzen
 
 - Persistenz als JSON-Dateien; eine korrupte Datei wird nach `<name>.corrupt` verschoben statt still gelöscht
 - Kein Laufzeit-Pluginsystem: Module werden zur Buildzeit eingebunden und registriert
 - Lokale Daten sind persönliche Gerätedaten und nicht Teil des BlackForestWorkspace-SSOT
 - Datei-I/O läuft synchron auf dem UI-Thread; für große Datenmengen folgt die Auslagerung auf einen IO-Dispatcher
 - Repository-Implementierungen (Android-Teil) sind noch nicht getestet; getestet ist der plattformunabhängige Kern
+- Transkription nutzt die auf dem Gerät installierte Android-Spracherkennung; ohne entsprechende App zeigt Synesis
+  einen Gerätehinweis statt selbst Audio an einen Cloud-Dienst zu senden
+- KI-Präzisierung bettet keine Modell- oder API-Schlüssel in die App ein: Synesis kopiert einen präzisen
+  Auftrag in die Zwischenablage und öffnet den Thomas/Hermes-Chat zur bewussten Übergabe
+- Alte Notiz-`linkedDate`-Werte werden als Legacy-Feld erhalten, aber nicht mehr im Kalender angezeigt

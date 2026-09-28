@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="file" path="notes.json" />
+    <exclude domain="file" path="notes.json.tmp" />
+    <exclude domain="file" path="notes.json.corrupt" />
+    <exclude domain="file" path="todos.json" />
+    <exclude domain="file" path="todos.json.tmp" />
+    <exclude domain="file" path="todos.json.corrupt" />
+    <exclude domain="file" path="events.json" />
+    <exclude domain="file" path="events.json.tmp" />
+    <exclude domain="file" path="events.json.corrupt" />
+    <exclude domain="file" path="transcripts.json" />
+    <exclude domain="file" path="transcripts.json.tmp" />
+    <exclude domain="file" path="transcripts.json.corrupt" />
+    <exclude domain="file" path="cellar-samples.json" />
+    <exclude domain="file" path="cellar-samples.json.tmp" />
+    <exclude domain="file" path="cellar-samples.json.corrupt" />
+</full-backup-content>

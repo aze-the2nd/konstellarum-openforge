@@ -17,11 +17,12 @@ class FileTodoRepository(context: Context) : TodoRepository {
 
     override val todos: StateFlow<List<TodoItem>> = store.items
 
-    override fun addTodo(title: String) {
+    override fun addTodo(title: String, linkedDate: String?) {
         val todo = TodoItem(
             id = UUID.randomUUID().toString(),
             title = title.trim(),
             done = false,
+            linkedDate = linkedDate,
             createdAtEpochMillis = System.currentTimeMillis(),
         )
         store.mutate { it + todo }
@@ -29,6 +30,10 @@ class FileTodoRepository(context: Context) : TodoRepository {
 
     override fun setTodoDone(id: String, done: Boolean) {
         store.mutate { list -> list.map { if (it.id == id) it.copy(done = done) else it } }
+    }
+
+    override fun setTodoLinkedDate(id: String, linkedDate: String?) {
+        store.mutate { list -> list.map { if (it.id == id) it.copy(linkedDate = linkedDate) else it } }
     }
 
     override fun removeTodo(id: String) {

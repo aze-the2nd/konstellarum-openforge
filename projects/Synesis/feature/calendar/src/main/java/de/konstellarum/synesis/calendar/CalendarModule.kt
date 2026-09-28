@@ -41,22 +41,22 @@ import de.konstellarum.synesis.core.calendar.MonthCell
 import de.konstellarum.synesis.core.calendar.MonthGrid
 import de.konstellarum.synesis.core.domain.CalendarDayEntry
 import de.konstellarum.synesis.core.domain.EventRepository
-import de.konstellarum.synesis.core.domain.NoteRepository
+import de.konstellarum.synesis.core.domain.TodoRepository
 import java.time.YearMonth
 
 @Composable
-fun CalendarModule(eventRepository: EventRepository, noteRepository: NoteRepository) {
+fun CalendarModule(eventRepository: EventRepository, todoRepository: TodoRepository) {
     val events by eventRepository.events.collectAsState()
-    val notes by noteRepository.notes.collectAsState()
+    val todos by todoRepository.todos.collectAsState()
 
     var yearMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<String?>(null) }
     var addEventOpen by remember { mutableStateOf(false) }
 
     val cells = remember(yearMonth) { MonthGrid.cellsFor(yearMonth) }
-    val markedDates = remember(events, notes) { CalendarProjector.datesWithEntries(events, notes) }
-    val selectedEntries = remember(selectedDate, events, notes) {
-        selectedDate?.let { CalendarProjector.entriesFor(it, events, notes) } ?: emptyList()
+    val markedDates = remember(events, todos) { CalendarProjector.datesWithEntries(events, todos) }
+    val selectedEntries = remember(selectedDate, events, todos) {
+        selectedDate?.let { CalendarProjector.entriesFor(it, events, todos) } ?: emptyList()
     }
 
     Column(
@@ -187,7 +187,7 @@ private fun EntryRow(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-            text = if (entry.kind == CalendarDayEntry.Kind.EVENT) "Termin" else "Notiz",
+            text = if (entry.kind == CalendarDayEntry.Kind.EVENT) "Termin" else "Aufgabe",
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.labelMedium,
         )

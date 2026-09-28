@@ -28,6 +28,7 @@ android {
         buildConfigField("String", "UPDATE_REPO_NAME", "\"blackforest-openforge\"")
         buildConfigField("String", "UPDATE_TAG_PREFIX", "\"synesis-v\"")
         buildConfigField("String", "UPDATE_ASSET_PREFIX", "\"Synesis-v\"")
+        buildConfigField("String", "HERMES_TELEGRAM_BOT_USERNAME", "\"tommy_watson_bot\"")
     }
 
     buildFeatures {
@@ -72,7 +73,9 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":feature:calendar"))
     implementation(project(":feature:cellar"))
+    implementation(project(":feature:controller"))
     implementation(project(":feature:notes"))
+    implementation(project(":feature:transcribe"))
     implementation(project(":feature:todos"))
 
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))

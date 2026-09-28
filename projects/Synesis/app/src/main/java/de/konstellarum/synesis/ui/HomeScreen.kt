@@ -28,6 +28,7 @@ fun HomeScreen(
     state: UpdateState,
     modules: List<FeatureModule>,
     onOpenModule: (String) -> Unit,
+    onOpenChat: () -> Unit,
     onStartUpdate: (UpdateInfo) -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -47,6 +48,13 @@ fun HomeScreen(
                 text = "Deine persönliche Zentrale — erweiterbar um Module.",
                 style = MaterialTheme.typography.bodyMedium,
             )
+
+            OutlinedButton(
+                onClick = onOpenChat,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Chat mit Thomas öffnen")
+            }
 
             when (state) {
                 UpdateState.Checking -> Text(text = "Suche nach Updates …")

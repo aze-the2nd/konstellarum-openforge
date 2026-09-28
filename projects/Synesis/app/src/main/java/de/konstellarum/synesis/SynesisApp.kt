@@ -15,7 +15,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import de.konstellarum.synesis.calendar.FileEventRepository
 import de.konstellarum.synesis.cellar.HttpTempRepository
+import de.konstellarum.synesis.chat.TelegramChatLauncher
+import de.konstellarum.synesis.controller.BleControllerRepository
+import de.konstellarum.synesis.core.chat.TelegramChatLink
 import de.konstellarum.synesis.notes.FileNoteRepository
+import de.konstellarum.synesis.transcribe.FileTranscriptRepository
 import de.konstellarum.synesis.todos.FileTodoRepository
 import de.konstellarum.synesis.ui.HomeScreen
 import de.konstellarum.synesis.ui.ModuleScreen
@@ -29,12 +33,17 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SynesisApp() {
     val context = LocalContext.current
+    val chatLauncher = remember(context) { TelegramChatLauncher(context) }
+    val chatLink = remember { TelegramChatLink.forBot(BuildConfig.HERMES_TELEGRAM_BOT_USERNAME) }
     val host = remember(context) {
         ModuleHost(
             noteRepository = FileNoteRepository(context),
             todoRepository = FileTodoRepository(context),
             eventRepository = FileEventRepository(context),
+            transcriptRepository = FileTranscriptRepository(context),
             tempRepository = HttpTempRepository(context),
+            controllerRepository = BleControllerRepository(context),
+            openChat = { chatLauncher.open(chatLink) },
         )
     }
 
@@ -71,6 +80,7 @@ fun SynesisApp() {
                 state = state,
                 modules = AppModules.registry.ordered,
                 onOpenModule = { selectedModuleId = it },
+                onOpenChat = { chatLauncher.open(chatLink) },
                 onStartUpdate = { launcher.install(it.downloadUrl) },
                 onRetry = { refreshToken += 1 },
             )

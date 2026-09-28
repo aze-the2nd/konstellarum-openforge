@@ -17,13 +17,12 @@ class FileNoteRepository(context: Context) : NoteRepository {
 
     override val notes: StateFlow<List<Note>> = store.items
 
-    override fun addNote(title: String, body: String, linkedDate: String?) {
+    override fun addNote(title: String, body: String) {
         val now = System.currentTimeMillis()
         val note = Note(
             id = UUID.randomUUID().toString(),
             title = title.trim(),
             body = body,
-            linkedDate = linkedDate,
             createdAtEpochMillis = now,
             updatedAtEpochMillis = now,
         )
