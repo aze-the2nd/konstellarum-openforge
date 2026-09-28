@@ -1,0 +1,148 @@
+name: Synesis release
+
+on:
+  push:
+    tags:
+      - 'synesis-v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to release (synesis-vX.Y.Z)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+  APP_DIR: projects/Synesis
+  KEYSTORE_DIR: ${{ github.workspace }}/.signing
+  KEYSTORE_FILE: ${{ github.workspace }}/.signing/synesis-release.p12
+  KEYSTORE_ALIAS: synesis
+  KEYSTORE_PASSWORD: synesis
+  KEY_PASSWORD: synesis
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${RELEASE_TAG}" != synesis-v* ]]; then
+            echo "Tag must start with synesis-v" >&2
+            exit 1
+          fi
+
+      - name: Derive version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#synesis-v}"
+          IFS='.' read -r major minor patch <<<"$VERSION"
+          VERSION_CODE=$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 34 platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Restore signing keystore
+        id: signing-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.KEYSTORE_DIR }}
+          key: synesis-signing-keystore-v1
+
+      - name: Generate signing keystore
+        if: steps.signing-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${KEYSTORE_DIR}"
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout "${KEYSTORE_DIR}/synesis-release.key.pem" \
+            -out "${KEYSTORE_DIR}/synesis-release.crt.pem" \
+            -days 3650 \
+            -subj "/CN=Synesis/O=BlackForest Engineering/C=DE"
+          openssl pkcs12 -export \
+            -inkey "${KEYSTORE_DIR}/synesis-release.key.pem" \
+            -in "${KEYSTORE_DIR}/synesis-release.crt.pem" \
+            -out "${KEYSTORE_FILE}" \
+            -name "${KEYSTORE_ALIAS}" \
+            -passout pass:"${KEYSTORE_PASSWORD}"
+          rm -f "${KEYSTORE_DIR}/synesis-release.key.pem" "${KEYSTORE_DIR}/synesis-release.crt.pem"
+
+      - name: Install Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRADLE_VERSION=8.8
+          curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
+          echo "/tmp/gradle-dist/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Build release APK
+        shell: bash
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_CODE="${{ steps.version.outputs.version_code }}"
+          BUILD_LOG="${GITHUB_WORKSPACE}/gradle-build.log"
+          set +e
+          gradle --no-daemon --stacktrace --info :app:assembleRelease \
+            -PversionName="$VERSION" \
+            -PversionCode="$VERSION_CODE" \
+            -PreleaseKeystorePassword="${KEYSTORE_PASSWORD}" \
+            -PreleaseKeyAlias="${KEYSTORE_ALIAS}" \
+            -PreleaseKeyPassword="${KEY_PASSWORD}" \
+            >"${BUILD_LOG}" 2>&1
+          GRADLE_EXIT=$?
+          set -e
+          if [[ ${GRADLE_EXIT} -ne 0 ]]; then
+            echo "::error title=Gradle build failed::assembleRelease failed; see log excerpt below"
+            tail -n 200 "${BUILD_LOG}" || true
+            grep -E '(^FAILURE:|^\* What went wrong:|^\* Exception is:|error|ERROR|failed|license|Unresolved|Could not)' "${BUILD_LOG}" | tail -n 20 | while IFS= read -r line; do
+              echo "::error ::${line}"
+            done || true
+            exit ${GRADLE_EXIT}
+          fi
+          echo "APK outputs:"
+          find app/build/outputs/apk -maxdepth 3 -type f | sort
+          APK_PATH=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort | tail -n 1)
+          if [[ -z "${APK_PATH}" ]]; then
+            echo "::error title=APK missing::No APK found under app/build/outputs/apk/release"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "${APK_PATH}" "dist/Synesis-v${VERSION}.apk"
+          sha256sum "dist/Synesis-v${VERSION}.apk" > "dist/Synesis-v${VERSION}.apk.sha256"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Synesis v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ env.APP_DIR }}/dist/Synesis-v${{ steps.version.outputs.version }}.apk
+            ${{ env.APP_DIR }}/dist/Synesis-v${{ steps.version.outputs.version }}.apk.sha256

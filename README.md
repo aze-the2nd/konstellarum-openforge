@@ -33,15 +33,15 @@ Source: [`projects/TaskClock`](projects/TaskClock)
 Latest release:
 https://github.com/aze-the2nd/blackforest-openforge/releases
 
-### Phronesis
-An Android app that checks GitHub releases on startup and offers a direct APK update flow.
+### Synesis
+A private all-in-one Android platform: a slim base app with a GitHub-release update mechanism, extended through modules.
 
-- GitHub Releases as update source
-- In-app update prompt on launch
-- APK download + installer handoff
-- App restarts after successful installation
+- Notes with optional calendar linking
+- Todos with done state
+- Month calendar (Mon–Sun) with events and linked notes
+- Local-first storage: personal data never leaves the device
 
-Source: [`projects/Phronesis`](projects/Phronesis)
+Source: [`projects/Synesis`](projects/Synesis)
 
 Latest release:
 https://github.com/aze-the2nd/blackforest-openforge/releases
@@ -62,7 +62,7 @@ Rules:
 
 1. Only publish curated, self-contained project snapshots.
 2. Keep private planning, client context, credentials, and internal operations out of this repo.
-3. Public releases use semantic/versioned tags, e.g. `phronesis-v0.1.0`.
+3. Public releases use semantic/versioned tags, e.g. `synesis-v0.1.0`.
 4. The visible app version should match the release tag.
 5. The private BlackForest Engineering repo remains the operational source-of-truth.
 
