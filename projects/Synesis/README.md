@@ -2,14 +2,17 @@
 
 Private All-in-One-Plattform für Android: Basis-App mit Update-Mechanismus und Modul-System.
 
-## Module (Stand 0.3.0)
+## Module (Stand 0.4.0)
 
 - **Notizen** — anlegen, bearbeiten, löschen; bewusst ohne Kalender-Verknüpfung
 - **Aufgaben** — Aufgabenliste mit Erledigt-Status und optionaler Kalender-Verknüpfung
 - **Kalender** — Monatsansicht (Mo–So) mit Terminen und verknüpften Aufgaben
-- **Transkription** — Android-Spracherkennung starten, Texte lokal speichern, kopieren und per Thomas/Hermes-KI präzisieren lassen
-- **Keller** — Temperaturüberwachung des Sensors `keller_temp` (IoT-Bridge im Tailnet)
-- **Controller** — WLAN-Einstellungen des Sensors per Bluetooth ändern
+- **Diktat & Transkription** — Diktat aufnehmen, per privater Whisper-Instanz transkribieren,
+  Audio und Text als Paket lokal ablegen
+- **IoT & Automation** (Bereich mit Tabs) —
+  - **Keller** — Temperaturüberwachung des Sensors `keller_temp` (IoT-Bridge im Tailnet),
+    Diagramm mit beschrifteten Achsen, Pinch-Zoom und Zeitbereichen (1 h / 24 h / 7 d / Alle)
+  - **Controller** — WLAN-Einstellungen des Sensors per Bluetooth ändern
 
 ## Startseite
 
@@ -47,7 +50,8 @@ Synesis/
 ├── build.gradle.kts
 ├── gradle.properties
 ├── app/                 Shell (Navigation, Chat-Button, Update, Modul-Registry)
-├── core/                Plattform-Kern (Modelle, Kalender-/Sensor-/Chat-/Transkript-/KI-Auftragslogik, Speicher) + Unit-Tests
+├── core/                Plattform-Kern (Modelle, Kalender-/Sensor-/Chat-/Transkript-/Whisper-Vertrag,
+│                        Speicher, Diagramm-Fensterlogik) + Unit-Tests
 └── feature/
     ├── notes/           Modul Notizen
     ├── todos/           Modul Aufgaben

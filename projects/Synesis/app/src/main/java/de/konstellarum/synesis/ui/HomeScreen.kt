@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import de.konstellarum.synesis.BuildConfig
 import de.konstellarum.synesis.core.platform.FeatureModule
+import de.konstellarum.synesis.core.platform.ModuleCategory
 import de.konstellarum.synesis.update.UpdateInfo
 import de.konstellarum.synesis.update.UpdateState
 
@@ -27,7 +28,9 @@ fun HomeScreen(
     appVersion: String,
     state: UpdateState,
     modules: List<FeatureModule>,
+    categories: List<ModuleCategory>,
     onOpenModule: (String) -> Unit,
+    onOpenCategory: (String) -> Unit,
     onOpenChat: () -> Unit,
     onStartUpdate: (UpdateInfo) -> Unit,
     onRetry: () -> Unit,
@@ -83,6 +86,28 @@ fun HomeScreen(
                         }
                     },
                 )
+            }
+
+            if (categories.isNotEmpty()) {
+                Text(text = "Bereiche", style = MaterialTheme.typography.titleMedium)
+                categories.forEach { category ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenCategory(category.id) },
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = category.title,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text = category.modules.joinToString(" · ") { it.title },
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                }
             }
 
             Text(text = "Module", style = MaterialTheme.typography.titleMedium)

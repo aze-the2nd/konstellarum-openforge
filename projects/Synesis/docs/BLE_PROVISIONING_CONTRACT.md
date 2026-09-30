@@ -34,6 +34,13 @@ response before the next write.
 - `failed:<code>` — stable code from the firmware enum
   `{auth, notfound, timeout, invalid}`, mapped from `WiFi.status()`; the app
   maps these to localized messages and shows unknown codes as-is.
+  The app additionally reserves `internal` as a fallback for an uncategorized
+  failure and maps it to a generic error message; the firmware never emits it.
+
+Implementation note: the app parser tolerates a trailing NUL byte in status
+payloads defensively (historic `NimBLECharacteristic::setValue(const char*)`
+behavior appended the string terminator); the firmware must still emit clean,
+NUL-free payloads.
 
 The firmware validates byte lengths and rejects invalid input with `failed:`
 instead of truncating or overflowing. `connecting` must terminate within 30 s

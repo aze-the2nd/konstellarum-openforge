@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cleartext HTTP is permitted only for the trusted tailnet hosts that serve sensor data.
-     Everything else stays HTTPS-only. -->
+<!-- Cleartext HTTP is permitted only for the trusted LAN/tailnet bridge hosts that serve
+     sensor data and private transcription. Everything else stays HTTPS-only. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
     <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.178.23</domain>
         <domain includeSubdomains="false">100.101.80.34</domain>
         <domain includeSubdomains="false">localhost</domain>
     </domain-config>

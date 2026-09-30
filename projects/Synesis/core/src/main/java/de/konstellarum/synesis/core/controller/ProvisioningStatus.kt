@@ -31,6 +31,10 @@ sealed interface ProvisioningStatus {
  *
  * Parsing notes pinned by the contract:
  *  - tokens are lowercase and may be surrounded by whitespace;
+ *  - a trailing NUL byte is tolerated defensively (historic firmware
+ *    behavior: `NimBLECharacteristic::setValue(const char*)` appended the
+ *    string terminator; fixed firmware-side, hardened here against
+ *    regressions);
  *  - `connected:` is followed by `<ssid>:<ipv4>`; the SSID may itself contain
  *    colons, so the IPv4 address is taken as the LAST colon-separated segment
  *    (the contract guarantees IPv4 in v1);
@@ -38,8 +42,10 @@ sealed interface ProvisioningStatus {
  */
 object ProvisioningStatusParser {
 
+    private const val NUL_BYTE = '\u0000'
+
     fun parse(payload: String): ProvisioningStatus {
-        val token = payload.trim()
+        val token = payload.trim().trimEnd(NUL_BYTE).trim()
         return when {
             token == ProvisioningProtocol.STATUS_IDLE -> ProvisioningStatus.Idle
             token == ProvisioningProtocol.STATUS_CONNECTING -> ProvisioningStatus.Connecting

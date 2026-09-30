@@ -70,4 +70,32 @@ class ProvisioningStatusParserTest {
     fun `malformed connected without an ip is unknown`() {
         assertIs<ProvisioningStatus.Unknown>(ProvisioningStatusParser.parse("connected:Keller-WLAN"))
     }
+
+    @Test
+    fun `ignores a trailing NUL byte on idle`() {
+        assertIs<ProvisioningStatus.Idle>(ProvisioningStatusParser.parse("idle\u0000"))
+    }
+
+    @Test
+    fun `ignores a trailing NUL byte on connected`() {
+        val status = ProvisioningStatusParser.parse("connected:Keller:WLAN:192.168.1.5\u0000")
+        val connected = assertIs<ProvisioningStatus.Connected>(status)
+        assertEquals("Keller:WLAN", connected.ssid)
+        assertEquals("192.168.1.5", connected.ip)
+    }
+
+    @Test
+    fun `ignores a trailing NUL byte on failed`() {
+        val status = ProvisioningStatusParser.parse("failed:auth\u0000")
+        val failed = assertIs<ProvisioningStatus.Failed>(status)
+        assertEquals("auth", failed.code)
+        assertNull(failed.detail)
+    }
+
+    @Test
+    fun `ignores surrounding whitespace and a trailing NUL byte`() {
+        assertIs<ProvisioningStatus.Connecting>(
+            ProvisioningStatusParser.parse("  connecting\r\n\u0000"),
+        )
+    }
 }

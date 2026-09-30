@@ -7,8 +7,9 @@ import de.konstellarum.synesis.controller.ControllerModule
 import de.konstellarum.synesis.core.controller.ControllerRepository
 import de.konstellarum.synesis.core.domain.EventRepository
 import de.konstellarum.synesis.core.domain.NoteRepository
-import de.konstellarum.synesis.core.domain.TranscriptRepository
 import de.konstellarum.synesis.core.domain.TodoRepository
+import de.konstellarum.synesis.core.domain.TranscriptRepository
+import de.konstellarum.synesis.core.domain.WhisperTranscriptionRepository
 import de.konstellarum.synesis.core.platform.FeatureModule
 import de.konstellarum.synesis.core.platform.ModuleRegistry
 import de.konstellarum.synesis.core.sensor.TempRepository
@@ -27,6 +28,7 @@ class ModuleHost(
     val transcriptRepository: TranscriptRepository,
     val tempRepository: TempRepository,
     val controllerRepository: ControllerRepository,
+    val whisperTranscriptionRepository: WhisperTranscriptionRepository,
     val openChat: () -> Boolean,
 )
 
@@ -39,6 +41,9 @@ class AppModule(
 )
 
 object AppModules {
+
+    const val CATEGORY_IOT = "IoT"
+    const val CATEGORY_TITLE_IOT = "IoT & Automation"
 
     private val modules: List<AppModule> = listOf(
         AppModule(
@@ -68,16 +73,20 @@ object AppModules {
         AppModule(
             descriptor = moduleDescriptor(
                 moduleId = "transcribe",
-                moduleTitle = "Transkription",
-                moduleDescription = "Sprache erfassen, lokal speichern und per KI präzisieren lassen.",
+                moduleTitle = "Diktat & Transkription",
+                moduleDescription = "Diktat aufnehmen, per privater Whisper-Instanz transkribieren, " +
+                    "Audio und Text als Paket lokal ablegen.",
             ),
-            content = { host -> TranscribeModule(host.transcriptRepository, host.openChat) },
+            content = { host ->
+                TranscribeModule(host.transcriptRepository, host.whisperTranscriptionRepository)
+            },
         ),
         AppModule(
             descriptor = moduleDescriptor(
                 moduleId = "cellar",
                 moduleTitle = "Keller",
                 moduleDescription = "Temperaturüberwachung des Kellertemperatur-Sensors.",
+                moduleCategory = CATEGORY_IOT,
             ),
             content = { host -> CellarModule(host.tempRepository) },
         ),
@@ -86,12 +95,16 @@ object AppModules {
                 moduleId = "controller",
                 moduleTitle = "Controller",
                 moduleDescription = "WLAN-Einstellungen des Sensors per Bluetooth ändern.",
+                moduleCategory = CATEGORY_IOT,
             ),
             content = { host -> ControllerModule(host.controllerRepository) },
         ),
     )
 
-    val registry: ModuleRegistry = ModuleRegistry(modules.map { it.descriptor })
+    val registry: ModuleRegistry = ModuleRegistry(
+        modules = modules.map { it.descriptor },
+        categoryTitles = mapOf(CATEGORY_IOT to CATEGORY_TITLE_IOT),
+    )
 
     fun byId(id: String): AppModule? = modules.firstOrNull { it.descriptor.id == id }
 
@@ -99,10 +112,12 @@ object AppModules {
         moduleId: String,
         moduleTitle: String,
         moduleDescription: String,
+        moduleCategory: String? = null,
     ): FeatureModule =
         object : FeatureModule {
             override val id: String = moduleId
             override val title: String = moduleTitle
             override val description: String = moduleDescription
+            override val category: String? = moduleCategory
         }
 }

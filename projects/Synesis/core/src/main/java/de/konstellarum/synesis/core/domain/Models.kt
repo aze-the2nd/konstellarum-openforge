@@ -45,6 +45,12 @@ data class Transcript(
     val id: String,
     val text: String,
     val createdAtEpochMillis: Long,
+    /**
+     * Name of the package folder under `filesDir/transcripts/` holding the audio
+     * recording (`audio.m4a`) and the transcribed text (`transcript.txt`).
+     * Null for legacy entries that predate package storage.
+     */
+    val packageDir: String? = null,
 )
 
 /**

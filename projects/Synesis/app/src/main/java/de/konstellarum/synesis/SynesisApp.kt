@@ -20,7 +20,9 @@ import de.konstellarum.synesis.controller.BleControllerRepository
 import de.konstellarum.synesis.core.chat.TelegramChatLink
 import de.konstellarum.synesis.notes.FileNoteRepository
 import de.konstellarum.synesis.transcribe.FileTranscriptRepository
+import de.konstellarum.synesis.transcribe.HttpWhisperTranscriptionRepository
 import de.konstellarum.synesis.todos.FileTodoRepository
+import de.konstellarum.synesis.ui.CategoryScreen
 import de.konstellarum.synesis.ui.HomeScreen
 import de.konstellarum.synesis.ui.ModuleScreen
 import de.konstellarum.synesis.update.GitHubReleaseUpdateRepository
@@ -43,11 +45,13 @@ fun SynesisApp() {
             transcriptRepository = FileTranscriptRepository(context),
             tempRepository = HttpTempRepository(context),
             controllerRepository = BleControllerRepository(context),
+            whisperTranscriptionRepository = HttpWhisperTranscriptionRepository(),
             openChat = { chatLauncher.open(chatLink) },
         )
     }
 
     var selectedModuleId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val launcher = remember(context) { UpdateLauncher(context) }
     val coordinator = remember {
@@ -74,22 +78,32 @@ fun SynesisApp() {
         colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme(),
     ) {
         val activeModule = selectedModuleId?.let { AppModules.byId(it) }
-        if (activeModule == null) {
-            HomeScreen(
-                appVersion = BuildConfig.VERSION_NAME,
-                state = state,
-                modules = AppModules.registry.ordered,
-                onOpenModule = { selectedModuleId = it },
-                onOpenChat = { chatLauncher.open(chatLink) },
-                onStartUpdate = { launcher.install(it.downloadUrl) },
-                onRetry = { refreshToken += 1 },
-            )
-        } else {
-            ModuleScreen(
+        val activeCategory = selectedCategoryId
+            ?.let { id -> AppModules.registry.categories.firstOrNull { it.id == id } }
+        when {
+            activeModule != null -> ModuleScreen(
                 module = activeModule.descriptor,
                 host = host,
                 content = activeModule.content,
                 onBack = { selectedModuleId = null },
+            )
+
+            activeCategory != null -> CategoryScreen(
+                category = activeCategory,
+                host = host,
+                onBack = { selectedCategoryId = null },
+            )
+
+            else -> HomeScreen(
+                appVersion = BuildConfig.VERSION_NAME,
+                state = state,
+                modules = AppModules.registry.uncategorized,
+                categories = AppModules.registry.categories,
+                onOpenModule = { selectedModuleId = it },
+                onOpenCategory = { selectedCategoryId = it },
+                onOpenChat = { chatLauncher.open(chatLink) },
+                onStartUpdate = { launcher.install(it.downloadUrl) },
+                onRetry = { refreshToken += 1 },
             )
         }
     }

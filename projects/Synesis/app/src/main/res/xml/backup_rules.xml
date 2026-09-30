@@ -12,6 +12,7 @@
     <exclude domain="file" path="transcripts.json" />
     <exclude domain="file" path="transcripts.json.tmp" />
     <exclude domain="file" path="transcripts.json.corrupt" />
+    <exclude domain="file" path="transcripts/" />
     <exclude domain="file" path="cellar-samples.json" />
     <exclude domain="file" path="cellar-samples.json.tmp" />
     <exclude domain="file" path="cellar-samples.json.corrupt" />

@@ -64,12 +64,42 @@ an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Aufgabe
 - App-Backup ist deaktiviert; lokale JSON-Dateien inklusive `.tmp`- und `.corrupt`-Varianten sind zusätzlich aus
   Backup-/Transfer-Regeln ausgeschlossen (Notizen, Aufgaben, Termine, Transkripte und Keller-Cache)
 
+## Ausbaustufe 0.4.0 — IoT-Bereich, Diagramm-Achsen, Whisper-Transkription
+
+- **Modul-Kategorien:** `FeatureModule.category` fasst Module zu einem Top-Level-Bereich im
+  Hauptmenü zusammen. `Keller` und `Controller` gehören zum Bereich `IoT & Automation`;
+  der Bereich öffnet eine Tab-Ansicht (ein Tab je Sensor/Gerät), erweiterbar um weitere Sensoren.
+- **Diagramm (Keller):** Y-Achse mit beschrifteter Skala (runde Gradwerte, Gitterlinien),
+  X-Achse mit absoluter Uhrzeit (`HH:mm`, bei langen Fenstern `dd.MM.`) statt relativer Abstände.
+  Pinch-Zoom und Pan auf dem Canvas, Zeitbereich-Presets `1 h` / `24 h` / `7 d` / `Alle`,
+  sichtbarer Fensterbereich als Beschriftung, `Zoom zurücksetzen` nach manuellem Zoom.
+- **Datenfenster:** Abruf mit `limit=5000` (Vertragsmaximum) und Zusammenführen mit dem lokalen
+  Cache (dedupliziert nach Zeitstempel, max. 10 080 Werte = eine Woche bei 1/min) — so wächst
+  die Historie für die 7-Tage-Ansicht auch ohne Bridge-Änderung.
+- **Diktat & Transkription (ersetzt Android-Spracherkennung und Small-Fast-Präzisierung):**
+  - Aufnahme lokal per `MediaRecorder` (AAC in MP4-Container, `audio.m4a`); die Android-Spracherkennung
+    (Google) wird nicht mehr verwendet.
+  - Transkription über die private Whisper-Instanz auf der Bridge:
+    `POST /transcripts/whisper` (rohe Audio-Bytes, `Content-Type: audio/mp4`, max. 25 MB,
+    LAN zuerst, Tailnet als Fallback; Read-Timeout 300 s wegen CPU-Inferenz).
+  - Speicherung als **Paket**: Ordner `filesDir/transcripts/<uuid>/` mit `audio.m4a` und
+    `transcript.txt`; der Index-Eintrag referenziert den Ordner. Löschen entfernt beides.
+  - Fehlgeschlagene Transkription behält die Aufnahme; `Erneut versuchen` läuft auf demselben Paket.
+- Manifest: `RECORD_AUDIO`-Berechtigung (Laufzeit-Anfrage beim Start der Aufnahme);
+  Audio-Pakete sind wie alle lokalen JSON-Dateien von Backup/Transfer ausgeschlossen.
+- Der bisherige KI-Präzisierungsfluss (Chat-Handoff) ist vollständig entfernt; die Bridge-Route
+  `POST /transcripts/refine` kann nach der Whisper-Umstellung entfallen.
+
 ## Sensor-Vertrag (iot-db-bridge)
 
 ```text
 GET /keller_temp?since=<unixsec>&limit=<n>  (Default 500, max 5000)
 → {"ok":true,"count":N,"values":[{"t":<unixsec>,"temp_c":<float>},…]}  (neueste zuerst)
 Fehler: HTTP 400/500 mit {"ok":false,"error":"…"}
+
+POST /transcripts/whisper   (rohe Audio-Bytes, Content-Type: audio/mp4, max. 25 MB)
+→ {"ok":true,"text":"…","model":"whisper-<größe>","language":"de"}
+Fehler: HTTP 400/413/422/503/500 mit {"ok":false,"error":"…"}
 ```
 
 ## Update-Quelle
@@ -92,8 +122,11 @@ Fehler: HTTP 400/500 mit {"ok":false,"error":"…"}
 - Lokale Daten sind persönliche Gerätedaten und nicht Teil des BlackForestWorkspace-SSOT
 - Datei-I/O läuft synchron auf dem UI-Thread; für große Datenmengen folgt die Auslagerung auf einen IO-Dispatcher
 - Repository-Implementierungen (Android-Teil) sind noch nicht getestet; getestet ist der plattformunabhängige Kern
-- Transkription nutzt die auf dem Gerät installierte Android-Spracherkennung; ohne entsprechende App zeigt Synesis
-  einen Gerätehinweis statt selbst Audio an einen Cloud-Dienst zu senden
-- KI-Präzisierung bettet keine Modell- oder API-Schlüssel in die App ein: Synesis kopiert einen präzisen
-  Auftrag in die Zwischenablage und öffnet den Thomas/Hermes-Chat zur bewussten Übergabe
+- Die Whisper-Transkription setzt den privaten Bridge-Endpunkt `POST /transcripts/whisper` voraus
+  (LAN/Tailnet). Bis dieser live auf Aurora bereitgestellt ist, meldet die UI den Fehler
+  (`Whisper-Endpunkt nicht erreichbar`), behält die Aufnahme und bietet `Erneut versuchen` an
+- Das 7-Tage-Fenster zeigt, was der lokale Cache enthält: ein Abruf liefert höchstens 5000 Werte
+  (~3,5 Tage bei 1/min), die restliche Historie sammelt sich über laufende App-Sitzungen
+- Die Aufnahme übersteht keine Activity-Neuanlage (z. B. Bildschirmrotation) — danach muss neu
+  aufgenommen werden; Background-Recording ist bewusst nicht umgesetzt
 - Alte Notiz-`linkedDate`-Werte werden als Legacy-Feld erhalten, aber nicht mehr im Kalender angezeigt
