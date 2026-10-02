@@ -22,6 +22,7 @@ env:
   KEYSTORE_ALIAS: synesis
   KEYSTORE_PASSWORD: synesis
   KEY_PASSWORD: synesis
+  KEYSTORE_B64: ${{ secrets.SYNESIS_KEYSTORE_B64 }}
 
 jobs:
   build-and-release:
@@ -78,8 +79,16 @@ jobs:
           path: ${{ env.KEYSTORE_DIR }}
           key: synesis-signing-keystore-v1
 
+      - name: Decode signing keystore from secret
+        if: env.KEYSTORE_B64 != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${KEYSTORE_DIR}"
+          printf '%s' "${KEYSTORE_B64}" | base64 -d > "${KEYSTORE_FILE}"
+
       - name: Generate signing keystore
-        if: steps.signing-cache.outputs.cache-hit != 'true'
+        if: steps.signing-cache.outputs.cache-hit != 'true' && env.KEYSTORE_B64 == ''
         shell: bash
         run: |
           set -euo pipefail
