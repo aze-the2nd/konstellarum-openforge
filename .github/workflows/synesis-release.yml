@@ -97,6 +97,17 @@ jobs:
             -passout pass:"${KEYSTORE_PASSWORD}"
           rm -f "${KEYSTORE_DIR}/synesis-release.key.pem" "${KEYSTORE_DIR}/synesis-release.crt.pem"
 
+      - name: Place keystore for Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Gradle resolves `rootProject.file(".signing/synesis-release.p12")` relative to
+          # the project directory (APP_DIR), not the workspace root — without this copy the
+          # release silently falls back to the ephemeral debug keystore and in-place updates
+          # break between releases.
+          mkdir -p "${APP_DIR}/.signing"
+          cp "${KEYSTORE_FILE}" "${APP_DIR}/.signing/synesis-release.p12"
+
       - name: Install Gradle
         shell: bash
         run: |
