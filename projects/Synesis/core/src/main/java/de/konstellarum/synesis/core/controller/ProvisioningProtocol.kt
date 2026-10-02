@@ -18,6 +18,7 @@ object ProvisioningProtocol {
     const val CHAR_PASSWORD_UUID = "64f853c5-3007-4986-8f0d-1442969bdf42"
     const val CHAR_APPLY_UUID = "15b55d7c-c1ec-4e21-ab83-56da84ca9dbf"
     const val CHAR_STATUS_UUID = "ef3f6a85-2f63-490f-9803-bb29ba25cf64"
+    const val CHAR_STORE_INTERVAL_UUID = "bdc0591c-2f3a-47c8-9d89-0288d52a6d0d"
 
     /** Byte limits as defined by the contract (UTF-8 byte counts, not chars). */
     const val MAX_SSID_BYTES = 32

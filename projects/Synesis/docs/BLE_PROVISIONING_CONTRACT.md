@@ -21,6 +21,7 @@ SSID + password only, no other configuration.
 | Password | `64f853c5-3007-4986-8f0d-1442969bdf42`   | Write           | UTF-8, max 64 bytes             |
 | Apply    | `15b55d7c-c1ec-4e21-ab83-56da84ca9dbf`   | Write           | 1 byte `0x01` = store (NVS) + reconnect |
 | Status   | `ef3f6a85-2f63-490f-9803-bb29ba25cf64`   | Read + Notify   | UTF-8 status string (below)     |
+| StoreInterval | `bdc0591c-2f3a-47c8-9d89-0288d52a6d0d` | Read + Write | uint16 little-endian, seconds |
 
 Writes use write-with-response; the app writes sequentially and waits for each
 response before the next write.
@@ -46,15 +47,36 @@ The firmware validates byte lengths and rejects invalid input with `failed:`
 instead of truncating or overflowing. `connecting` must terminate within 30 s
 with either `connected:...` or a `failed:` status.
 
+## Store interval (firmware v3+, added 2026-10-02)
+
+- `StoreInterval` controls how often the controller writes a measurement into
+  its database: uint16 little-endian seconds, allowed range 5–3600.
+- A valid write is applied immediately and persisted in NVS (survives
+  reboots); no Apply command is involved.
+- Invalid writes (payload not exactly 2 bytes, or value outside 5–3600) are
+  silently ignored. The app therefore verifies every write by reading the
+  characteristic back and expects the previous value when the write was
+  rejected.
+- Independent from the on-device chart ring buffer, which keeps a fixed 60 s
+  cadence regardless of this value — a shorter interval must not silently
+  shrink the ring buffer's covered timespan.
+- The characteristic is optional: on firmware without it (pre-v3) the app
+  still provisions WLAN and disables the interval section.
+
 ## App flow
 
 1. Scan, filter by service UUID / name `iot-rtd-sensor`.
 2. Connect, discover services.
-3. Read Status (current state, e.g. `connected:<ssid>:<ip>` after boot).
+3. Read Status (current state, e.g. `connected:<ssid>:<ip>` after boot), and
+   read StoreInterval if the characteristic is present (shows the current
+   interval; optional, non-blocking).
 4. Subscribe to Status notifications (CCCD).
 5. Write SSID, then Password, then Apply `0x01`.
 6. Wait for notifications: `connecting` then `connected:...` or `failed:...`.
 7. If the link drops mid-flow, reconnect and read Status (fallback).
+8. StoreInterval changes (independent of the WLAN flow): write the uint16
+   value, then read it back and compare — equal means applied, different
+   means the device ignored the write.
 
 ## Firmware requirements (confirmed 2026-09-28)
 

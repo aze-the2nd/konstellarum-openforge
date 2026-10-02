@@ -24,6 +24,10 @@ import de.konstellarum.synesis.core.controller.ControllerRepository
 import de.konstellarum.synesis.core.controller.ProvisioningProtocol
 import de.konstellarum.synesis.core.controller.ProvisioningStatus
 import de.konstellarum.synesis.core.controller.ProvisioningStatusParser
+import de.konstellarum.synesis.core.controller.StoreIntervalConfig
+import de.konstellarum.synesis.core.controller.StoreIntervalState
+import de.konstellarum.synesis.core.controller.StoreIntervalUpdate
+import de.konstellarum.synesis.core.controller.StoreIntervalUpdateResolver
 import de.konstellarum.synesis.core.controller.WifiConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,11 +60,16 @@ class BleControllerRepository(
     override val provisioningStatus: StateFlow<ProvisioningStatus> =
         _provisioningStatus.asStateFlow()
 
+    private val _storeInterval =
+        MutableStateFlow<StoreIntervalState>(StoreIntervalState.Unknown)
+    override val storeInterval: StateFlow<StoreIntervalState> = _storeInterval.asStateFlow()
+
     private val serviceUuid = UUID.fromString(ProvisioningProtocol.SERVICE_UUID)
     private val ssidUuid = UUID.fromString(ProvisioningProtocol.CHAR_SSID_UUID)
     private val passwordUuid = UUID.fromString(ProvisioningProtocol.CHAR_PASSWORD_UUID)
     private val applyUuid = UUID.fromString(ProvisioningProtocol.CHAR_APPLY_UUID)
     private val statusUuid = UUID.fromString(ProvisioningProtocol.CHAR_STATUS_UUID)
+    private val storeIntervalUuid = UUID.fromString(ProvisioningProtocol.CHAR_STORE_INTERVAL_UUID)
 
     private var scanCallback: ScanCallback? = null
     private var gatt: BluetoothGatt? = null
@@ -69,6 +78,7 @@ class BleControllerRepository(
     private var passwordCharacteristic: BluetoothGattCharacteristic? = null
     private var applyCharacteristic: BluetoothGattCharacteristic? = null
     private var statusCharacteristic: BluetoothGattCharacteristic? = null
+    private var storeIntervalCharacteristic: BluetoothGattCharacteristic? = null
 
     private var provisioningOutcome: CompletableDeferred<ProvisioningStatus>? = null
 
@@ -199,6 +209,7 @@ class BleControllerRepository(
         passwordCharacteristic = service.getCharacteristic(passwordUuid)
         applyCharacteristic = service.getCharacteristic(applyUuid)
         statusCharacteristic = service.getCharacteristic(statusUuid)
+        storeIntervalCharacteristic = service.getCharacteristic(storeIntervalUuid)
 
         val writeUuids = listOf(ssidCharacteristic, passwordCharacteristic, applyCharacteristic)
         if (writeUuids.any { it == null || (it.properties and BluetoothGattCharacteristic.PROPERTY_WRITE) == 0 }) {
@@ -244,6 +255,23 @@ class BleControllerRepository(
             ?.let { ProvisioningStatusParser.parse(String(it, Charsets.UTF_8)) }
             ?: ProvisioningStatus.Idle
         val currentSsid = (initialStatus as? ProvisioningStatus.Connected)?.ssid.orEmpty()
+
+        // StoreInterval is optional (firmware v3+): WLAN provisioning works
+        // without it, the matching UI section is disabled in that case.
+        val intervalCharacteristic = storeIntervalCharacteristic
+        val intervalProperties = intervalCharacteristic?.properties ?: 0
+        if (intervalCharacteristic == null ||
+            (intervalProperties and BluetoothGattCharacteristic.PROPERTY_READ) == 0 ||
+            (intervalProperties and BluetoothGattCharacteristic.PROPERTY_WRITE) == 0
+        ) {
+            _storeInterval.value = StoreIntervalState.Unsupported
+        } else {
+            val rawInterval = readCharacteristic(connected, callbacks, intervalCharacteristic)
+            _storeInterval.value = rawInterval
+                ?.let { StoreIntervalConfig.decode(it) }
+                ?.let { StoreIntervalState.Current(it) }
+                ?: StoreIntervalState.Unknown
+        }
 
         _provisioningStatus.value = initialStatus
         _link.value = ControllerLink.Connected(device, currentSsid)
@@ -308,6 +336,38 @@ class BleControllerRepository(
         } ?: ProvisioningStatus.Failed(ProvisioningProtocol.FAIL_TIMEOUT)
         provisioningOutcome = null
         _provisioningStatus.value = outcome
+    }
+
+    override suspend fun setStoreInterval(seconds: Int): StoreIntervalUpdate {
+        val g = gatt
+        val callbacks = gattCallbacks
+        val characteristic = storeIntervalCharacteristic
+        if (g == null || callbacks == null) {
+            return StoreIntervalUpdate.Unavailable("Keine Verbindung zum Controller.")
+        }
+        if (characteristic == null) {
+            return StoreIntervalUpdate.Unavailable(
+                "Der Controller unterstützt das Speicherintervall nicht (Firmware v3 erforderlich).",
+            )
+        }
+        if (!writeCharacteristic(
+                g,
+                callbacks,
+                characteristic,
+                StoreIntervalConfig.encode(seconds),
+            )
+        ) {
+            return StoreIntervalUpdate.Unavailable("Der Wert konnte nicht geschrieben werden.")
+        }
+        // Contract: invalid writes are silently ignored on the device, so the
+        // app verifies via read-back instead of trusting the write response.
+        val readBack = readCharacteristic(g, callbacks, characteristic)
+            ?.let { StoreIntervalConfig.decode(it) }
+        return StoreIntervalUpdateResolver.resolve(seconds, readBack).also { result ->
+            if (result is StoreIntervalUpdate.Applied) {
+                _storeInterval.value = StoreIntervalState.Current(result.seconds)
+            }
+        }
     }
 
     private fun onStatusNotification(characteristic: BluetoothGattCharacteristic) {
@@ -380,6 +440,8 @@ class BleControllerRepository(
         passwordCharacteristic = null
         applyCharacteristic = null
         statusCharacteristic = null
+        storeIntervalCharacteristic = null
+        _storeInterval.value = StoreIntervalState.Unknown
         provisioningOutcome = null
     }
 

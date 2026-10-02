@@ -38,6 +38,7 @@ interface ControllerRepository {
     val link: StateFlow<ControllerLink>
     val devices: StateFlow<List<ControllerDevice>>
     val provisioningStatus: StateFlow<ProvisioningStatus>
+    val storeInterval: StateFlow<StoreIntervalState>
 
     suspend fun startScan()
     suspend fun stopScan()
@@ -50,4 +51,12 @@ interface ControllerRepository {
      * [ProvisioningStatus.Connected] and [ProvisioningStatus.Failed].
      */
     suspend fun provision(config: WifiConfig)
+
+    /**
+     * Writes a new store interval (whole seconds in 5..3600, see
+     * [StoreIntervalConfig]) and verifies it by reading the characteristic
+     * back. The device ignores invalid writes; [StoreIntervalUpdate] reports
+     * whether the new value is actually active.
+     */
+    suspend fun setStoreInterval(seconds: Int): StoreIntervalUpdate
 }

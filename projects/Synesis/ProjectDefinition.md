@@ -100,6 +100,20 @@ an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Aufgabe
   `TempRepository`-Vertrag gepinnt. Der Markierungspunkt im Diagramm sitzt damit wieder am
   neuesten Wert (rechter Rand).
 
+## Ausbaustufe 0.5.0 — Speicherintervall über BLE
+
+- Der Controller (Firmware v3) schreibt Messwerte jetzt im einstellbaren Intervall in seine
+  Datenbank (auf dem Gerät derzeit 10 s, vorher fest 60 s); Bereich 5–3600 s, persistiert in
+  NVS, übersteht Reboots. Der on-device 7-Tage-Ringpuffer bleibt fest bei 60 s Kadenz.
+- Neue BLE-Charakteristik `StoreInterval` im bestehenden Provisioning-Service
+  (`bdc0591c-2f3a-47c8-9d89-0288d52a6d0d`, READ|WRITE, uint16 little-endian Sekunden).
+  Ungültige Writes werden vom Gerät still ignoriert — die App verifiziert jeden Write per
+  Rücklesen und meldet Übernahme, Ablehnung oder Verifikationsfehler.
+- App: Sektion „Speicherintervall“ im Controller-Modul (Eingabefeld mit 5–3600-s-Validierung,
+  Kurzwahl 10 s / 60 s / 5 min / 60 min, Anzeige des aktuellen Werts beim Verbinden).
+  Fehlt die Charakteristik (Firmware < v3), wird die Sektion deaktiviert angezeigt, die
+  WLAN-Parametrierung bleibt voll funktionsfähig.
+
 ## Sensor-Vertrag (iot-db-bridge)
 
 ```text

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -24,6 +25,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -40,12 +42,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import de.konstellarum.synesis.core.controller.ControllerDevice
 import de.konstellarum.synesis.core.controller.ControllerLink
 import de.konstellarum.synesis.core.controller.ControllerRepository
 import de.konstellarum.synesis.core.controller.ProvisioningStatus
+import de.konstellarum.synesis.core.controller.StoreIntervalState
+import de.konstellarum.synesis.core.controller.StoreIntervalUpdate
+import de.konstellarum.synesis.core.controller.StoreIntervalValidator
 import de.konstellarum.synesis.core.controller.WifiConfig
 import de.konstellarum.synesis.core.controller.WifiConfigValidator
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +68,7 @@ fun ControllerModule(repository: ControllerRepository) {
     val link by repository.link.collectAsState()
     val devices by repository.devices.collectAsState()
     val provisioningStatus by repository.provisioningStatus.collectAsState()
+    val storeInterval by repository.storeInterval.collectAsState()
 
     var hasPermissions by remember { mutableStateOf(checkBluetoothPermissions(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -124,6 +131,8 @@ fun ControllerModule(repository: ControllerRepository) {
                     provisioningStatus = provisioningStatus,
                     applying = applying,
                     result = result,
+                    storeInterval = storeInterval,
+                    onSetInterval = repository::setStoreInterval,
                     onApply = { config ->
                         scope.launch {
                             applying = true
@@ -219,6 +228,8 @@ private fun ProvisioningForm(
     provisioningStatus: ProvisioningStatus,
     applying: Boolean,
     result: ApplyResult?,
+    storeInterval: StoreIntervalState,
+    onSetInterval: suspend (Int) -> StoreIntervalUpdate,
     onApply: (WifiConfig) -> Unit,
     onDisconnect: () -> Unit,
 ) {
@@ -323,11 +334,144 @@ private fun ProvisioningForm(
             }
         }
 
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        StoreIntervalSection(
+            state = storeInterval,
+            onSetInterval = onSetInterval,
+        )
+
         TextButton(onClick = onDisconnect) {
             Text("Trennen")
         }
     }
 }
+
+@Composable
+private fun StoreIntervalSection(
+    state: StoreIntervalState,
+    onSetInterval: suspend (Int) -> StoreIntervalUpdate,
+) {
+    val scope = rememberCoroutineScope()
+    var intervalText by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var update by remember { mutableStateOf<StoreIntervalUpdate?>(null) }
+
+    val validation = remember(intervalText) { StoreIntervalValidator.validate(intervalText) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Speicherintervall", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Wie oft der Controller Messwerte in seine Datenbank schreibt.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
+        if (state is StoreIntervalState.Unsupported) {
+            Text(
+                "Dieser Controller unterstützt das Speicherintervall nicht (Firmware v3 erforderlich).",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        } else {
+            when (state) {
+                is StoreIntervalState.Current -> Text(
+                    "Aktuell: ${formatInterval(state.seconds)}",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+
+                StoreIntervalState.Unknown -> Text(
+                    "Aktueller Wert unbekannt.",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+
+                StoreIntervalState.Unsupported -> Unit
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = intervalText,
+                    onValueChange = { raw ->
+                        intervalText = raw.filter { it.isDigit() }.take(4)
+                    },
+                    label = { Text("Intervall") },
+                    suffix = { Text("s") },
+                    singleLine = true,
+                    isError = intervalText.isNotBlank() &&
+                        validation is StoreIntervalValidator.ValidationResult.Invalid,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                Button(
+                    onClick = {
+                        val valid = validation as? StoreIntervalValidator.ValidationResult.Valid
+                            ?: return@Button
+                        scope.launch {
+                            busy = true
+                            update = null
+                            update = onSetInterval(valid.seconds)
+                            busy = false
+                        }
+                    },
+                    enabled = !busy && validation is StoreIntervalValidator.ValidationResult.Valid,
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Setzen …")
+                    } else {
+                        Text("Setzen")
+                    }
+                }
+            }
+
+            (validation as? StoreIntervalValidator.ValidationResult.Invalid)?.let { invalid ->
+                if (intervalText.isNotBlank()) {
+                    Text(
+                        invalid.message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf(10 to "10 s", 60 to "60 s", 300 to "5 min", 3600 to "60 min")
+                    .forEach { (seconds, label) ->
+                        TextButton(onClick = { intervalText = seconds.toString() }) {
+                            Text(label)
+                        }
+                    }
+            }
+        }
+
+        when (val current = update) {
+            is StoreIntervalUpdate.Applied -> Text(
+                "Übernommen: ${formatInterval(current.seconds)}.",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            is StoreIntervalUpdate.Rejected -> Text(
+                "Vom Controller nicht übernommen — aktuell bleibt ${formatInterval(current.current)}.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            is StoreIntervalUpdate.Unavailable -> Text(
+                current.message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            null -> Unit
+        }
+    }
+}
+
+private fun formatInterval(seconds: Int): String =
+    if (seconds >= 60 && seconds % 60 == 0) "${seconds / 60} min" else "$seconds s"
 
 @Composable
 private fun SuccessPane(onDone: () -> Unit) {
