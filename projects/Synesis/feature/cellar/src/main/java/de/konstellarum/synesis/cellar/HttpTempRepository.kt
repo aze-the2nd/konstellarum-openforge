@@ -4,6 +4,7 @@ import android.content.Context
 import de.konstellarum.synesis.core.sensor.EndpointFallback
 import de.konstellarum.synesis.core.sensor.FetchStatus
 import de.konstellarum.synesis.core.sensor.SensorResponseParser
+import de.konstellarum.synesis.core.sensor.TempHistory
 import de.konstellarum.synesis.core.sensor.TempRepository
 import de.konstellarum.synesis.core.sensor.TempSample
 import de.konstellarum.synesis.core.store.FileBackedListStore
@@ -21,8 +22,10 @@ import java.net.URL
  * Reads the keller_temp series from the iot-db-bridge. The LAN address of the
  * bridge is tried first (reachable from the home WLAN without Tailscale),
  * then the tailnet address as fallback. Fetched samples are merged into the
- * local cache (deduplicated by timestamp) so a week of history accumulates
- * for the chart's range presets; the cache survives restarts.
+ * local cache via [TempHistory.merge] — deduplicated by timestamp and kept in
+ * ascending time order (newest last) — so a week of history accumulates for
+ * the chart's range presets and `samples.last()` always carries the current
+ * value; the cache survives restarts.
  */
 class HttpTempRepository(
     context: Context,
@@ -48,10 +51,7 @@ class HttpTempRepository(
         when (result) {
             is SensorResponseParser.ParseResult.Success -> {
                 store.mutate { cached ->
-                    (result.samples + cached)
-                        .distinctBy { it.t }
-                        .sortedByDescending { it.t }
-                        .take(MAX_HISTORY)
+                    TempHistory.merge(result.samples, cached, MAX_HISTORY)
                 }
                 _status.value = FetchStatus.Success(System.currentTimeMillis())
             }

@@ -90,6 +90,16 @@ an Module durchgereicht — so bleibt z. B. der Kalender live, wenn eine Aufgabe
 - Der bisherige KI-Präzisierungsfluss (Chat-Handoff) ist vollständig entfernt; die Bridge-Route
   `POST /transcripts/refine` kann nach der Whisper-Umstellung entfallen.
 
+## Ausbaustufe 0.4.1 — Hotfix Keller-Anzeige
+
+- **Behoben:** Die „Aktuell“-Karte im Keller-Modul zeigte den **ältesten** Cache-Eintrag statt des
+  neuesten Messwerts (eingefrorene Anzeige, z. B. dauerhaft 21,4 °C) — der Cache-Merge aus 0.4.0
+  sortierte neueste-zuerst, die Anzeige liest aber das letzte Element.
+- Neuer Kern `TempHistory` (aufsteigende Zeitordnung = neuester Wert zuletzt, Dedupe nach
+  Zeitstempel, Cap auf die neuesten Werte) mit Unit-Tests; die Ordnungs-Invariante ist im
+  `TempRepository`-Vertrag gepinnt. Der Markierungspunkt im Diagramm sitzt damit wieder am
+  neuesten Wert (rechter Rand).
+
 ## Sensor-Vertrag (iot-db-bridge)
 
 ```text
